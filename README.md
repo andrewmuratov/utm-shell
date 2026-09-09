@@ -28,14 +28,39 @@ irm https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/setup.ps1 | i
 
 On a new setup, enter your **UTORid**. That's normally the only question.
 
-`utm-shell` uses `dh2026pc08` by default. You can switch later with `utm host HOST`.
-
-If you're off campus, setup handles the VPN step automatically:
-
-- Cisco Secure Client installed → it opens and setup waits for UTORvpn
-- not installed → the official U of T Cisco download opens; install the VPN module and rerun the same command
+`utm-shell` uses `dh2026pc08` by default. Switch later with `utm host HOST`.
 
 Your UTORid password may be requested once to enable passwordless SSH.
+
+### If you're off campus
+
+You don't need to figure out the VPN first. Setup detects it and guides you in order.
+
+If Cisco Secure Client is missing, you'll see something like:
+
+```text
+UTORvpn setup
+  1. U of T VPN instructions opened in your browser.
+  2. Download + extract Cisco Secure Client for Linux.
+  3. In the extracted folder, run:
+     sudo apt install ./cisco-secure-client-vpn-*_amd64.deb
+  4. Leave this terminal open — utm-shell will continue automatically.
+
+Waiting for Cisco Secure Client...
+```
+
+As soon as Cisco is installed, utm-shell detects it, opens it, and shows:
+
+```text
+UTORvpn
+  1. Cisco Secure Client opened.
+  2. Connect to general.vpn.utoronto.ca.
+  3. Sign in with your UTORid and password.
+
+Waiting for UTORvpn...
+```
+
+When the VPN connects, setup continues automatically. Windows, macOS, WSL, Ubuntu/Debian, Fedora, and other supported systems get instructions matched to their platform.
 
 When setup finishes:
 
@@ -56,7 +81,7 @@ utm update          update/repair
 utm help            help
 ```
 
-At home, `utm` detects that the lab network is unavailable, opens Cisco Secure Client automatically, and waits for the VPN to connect. No retry menu is required.
+At home, `utm` handles the same VPN flow automatically. On campus, it connects directly.
 
 UTORvpn server: `general.vpn.utoronto.ca`
 
