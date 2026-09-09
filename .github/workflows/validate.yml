@@ -9,8 +9,13 @@ permissions:
   contents: read
 
 jobs:
-  bash:
-    runs-on: ubuntu-latest
+  unix:
+    name: ${{ matrix.os }} / Bash
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -19,8 +24,43 @@ jobs:
         run: |
           bash -n install.sh
           bash -n uninstall.sh
+          bash -n doctor.sh
 
-      - name: Smoke-test CLI help
+      - name: Smoke-test Bash CLIs
         run: |
-          ./install.sh --help >/dev/null
-          ./uninstall.sh --help >/dev/null
+          bash install.sh --help >/dev/null
+          bash uninstall.sh --help >/dev/null
+          bash doctor.sh --help >/dev/null
+
+  windows:
+    name: windows-latest / PowerShell
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate PowerShell syntax
+        shell: pwsh
+        run: |
+          $failed = $false
+          foreach ($file in @('install.ps1', 'uninstall.ps1', 'doctor.ps1')) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              (Resolve-Path $file),
+              [ref]$tokens,
+              [ref]$errors
+            ) | Out-Null
+            if ($errors.Count -gt 0) {
+              Write-Error "$file has parser errors:`n$($errors | Out-String)"
+              $failed = $true
+            }
+          }
+          if ($failed) { exit 1 }
+
+      - name: Smoke-test PowerShell CLIs
+        shell: pwsh
+        run: |
+          .\install.ps1 -Help | Out-Null
+          .\uninstall.ps1 -Help | Out-Null
+          .\doctor.ps1 -Help | Out-Null
