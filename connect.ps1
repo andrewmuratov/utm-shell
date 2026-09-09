@@ -8,10 +8,9 @@ param(
 
 Set-StrictMode -Version 2.0
 $ErrorActionPreference = 'Stop'
-$Version = '1.5.0'
+$Version = '1.6.0'
 $RawBase = 'https://raw.githubusercontent.com/andrewmuratov/utm-shell/main'
 $VpnGuide = 'https://security.utoronto.ca/services/vpn/usage-guide/'
-$VpnDownload = 'https://uoft.me/cisco-vpn-download'
 $VpnServer = 'general.vpn.utoronto.ca'
 $StateDir = Join-Path (Join-Path $HOME '.config') 'utm-shell'
 $AliasFile = Join-Path $StateDir 'alias'
@@ -69,19 +68,6 @@ function Get-VpnClientPath {
     return $null
 }
 
-function Open-UtorVpn {
-    $client = Get-VpnClientPath
-    if ($client) {
-        Start-Process $client | Out-Null
-        Write-Host "Opened Cisco Secure Client. Connect to $VpnServer." -ForegroundColor Green
-        return $true
-    }
-    [void](Open-Url $VpnDownload)
-    Write-Host 'Cisco Secure Client is not installed.' -ForegroundColor Yellow
-    Write-Host 'Opened the official U of T download page. Install the VPN module, then run `utm` again.'
-    return $false
-}
-
 function Get-NetworkState {
     $output = & ssh.exe -o BatchMode=yes -o ConnectTimeout=5 -o ConnectionAttempts=1 $SshAlias true 2>&1
     $code = $LASTEXITCODE
@@ -96,33 +82,90 @@ function Get-NetworkState {
     return @{ State='unknown'; Output=$text }
 }
 
-function Wait-ForNetwork {
-    $probe = Get-NetworkState
-    if ($probe.State -ne 'network') { return $true }
+function Show-VpnConnectSteps {
+    Write-Host "`nUTORvpn" -ForegroundColor Blue
+    Write-Host '  1. Cisco Secure Client opened.'
+    Write-Host "  2. Connect to $VpnServer."
+    Write-Host '  3. Sign in with your UTORid and password.'
+    Write-Host
+}
 
-    Write-Host "`nUTORvpn required off campus." -ForegroundColor Yellow
-    $client = Get-VpnClientPath
-    if (-not $client) {
-        [void](Open-Url $VpnDownload)
-        Write-Host 'Cisco Secure Client is not installed. The official U of T download page was opened.'
-        Write-Host 'Install the VPN module, then run `utm` again.'
-        return $false
-    }
+function Show-VpnInstallSteps {
+    Write-Host "`nUTORvpn setup" -ForegroundColor Blue
+    Write-Host '  1. U of T VPN instructions opened in your browser.'
+    Write-Host '  2. Download Cisco Secure Client for Windows.'
+    Write-Host '  3. Run the .msi installer.'
+    Write-Host '  4. Leave this window open - utm-shell will continue automatically.'
+    Write-Host
+}
 
-    Start-Process $client | Out-Null
-    Write-Host "Cisco Secure Client opened. Connect to $VpnServer."
+function Wait-ForVpn {
     $spin = @('|','/','-','\')
+    Write-Host -NoNewline 'Waiting for UTORvpn... '
     for ($i = 0; $i -lt 90; $i++) {
         $probe = Get-NetworkState
         if ($probe.State -ne 'network') {
-            Write-Host "`r✓ UTORvpn connected.          " -ForegroundColor Green
+            Write-Host "`r✓ UTORvpn connected.                    " -ForegroundColor Green
             return $true
         }
         Write-Host -NoNewline "`rWaiting for UTORvpn... $($spin[$i % 4])"
         Start-Sleep -Seconds 2
     }
-    Write-Host "`rStill offline.                 " -ForegroundColor Yellow
+    Write-Host "`rStill offline.                           " -ForegroundColor Yellow
     return $false
+}
+
+function Wait-ForVpnClient {
+    $spin = @('|','/','-','\')
+    Write-Host -NoNewline 'Waiting for Cisco Secure Client... '
+    for ($i = 0; $i -lt 300; $i++) {
+        $client = Get-VpnClientPath
+        if ($client) {
+            Write-Host "`r✓ Cisco Secure Client installed.         " -ForegroundColor Green
+            Start-Process $client | Out-Null
+            Show-VpnConnectSteps
+            return (Wait-ForVpn)
+        }
+        Write-Host -NoNewline "`rWaiting for Cisco Secure Client... $($spin[$i % 4])"
+        Start-Sleep -Seconds 2
+    }
+    Write-Host "`rStill waiting for Cisco Secure Client.   " -ForegroundColor Yellow
+    return $false
+}
+
+function Open-UtorVpn {
+    $probe = Get-NetworkState
+    if ($probe.State -ne 'network') {
+        Write-Host '✓ UTM is already reachable.' -ForegroundColor Green
+        return $true
+    }
+
+    $client = Get-VpnClientPath
+    if ($client) {
+        Start-Process $client | Out-Null
+        Show-VpnConnectSteps
+        return (Wait-ForVpn)
+    }
+
+    [void](Open-Url $VpnGuide)
+    Show-VpnInstallSteps
+    return (Wait-ForVpnClient)
+}
+
+function Wait-ForNetwork {
+    $probe = Get-NetworkState
+    if ($probe.State -ne 'network') { return $true }
+
+    $client = Get-VpnClientPath
+    if ($client) {
+        Start-Process $client | Out-Null
+        Show-VpnConnectSteps
+        return (Wait-ForVpn)
+    }
+
+    [void](Open-Url $VpnGuide)
+    Show-VpnInstallSteps
+    return (Wait-ForVpnClient)
 }
 
 function Show-Status {
