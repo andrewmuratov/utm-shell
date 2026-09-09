@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-VERSION="1.4.0"
+VERSION="1.5.0"
 USE_HUSHLOGIN="${1:-1}"
 BASHRC="$HOME/.bashrc"
 START="# >>> utm-shell >>>"
@@ -110,7 +110,7 @@ function ff {
 }
 
 function path { printf '%s\n' "$PATH" | tr ':' '\n'; }
-function utm-version { printf 'utm-shell 1.4.0\n'; }
+function utm-version { printf 'utm-shell 1.5.0\n'; }
 
 function utm-help {
   cat <<'HELP_EOF'
@@ -118,20 +118,18 @@ utm-shell commands
 
   ll / la       detailed / hidden-file listings
   .. / ...      move up one / two directories
-  c / cls       fully clear the terminal + scrollback
-  reload        reload the shell setup
-  bye           leave the SSH session
-  mkcd DIR      create a directory and enter it
-  ff NAME       find files/directories by name below .
-  disk          filesystem disk usage
-  usage         sizes of all items here, including hidden files
-  path          print PATH one entry per line
+  c / cls       clear terminal + scrollback
+  reload        reload shell setup
+  bye           leave SSH
+  mkcd DIR      create + enter directory
+  ff NAME       find files/directories
+  disk          filesystem usage
+  usage         sizes of items here
+  path          print PATH
   py [ARGS]     run python3
-  gs / gd / gl  friendly Git status / diff / log shortcuts
-  utm-version   show the installed utm-shell version
+  gs / gd / gl  Git status / diff / log
+  utm-version   show version
   utm-help      show this help
-
-On your own computer, use `utm help` for connection/VPN/file-copy commands.
 HELP_EOF
 }
 
@@ -155,8 +153,7 @@ fi
 BASHRC_EOF
 
 if ! bash -n "$BASHRC"; then
-  printf 'utm-shell: ~/.bashrc still contains a syntax error outside the managed block.\n' >&2
-  printf 'The utm-shell block itself was replaced successfully; inspect ~/.bashrc manually.\n' >&2
+  printf 'utm-shell: ~/.bashrc has a syntax error outside the managed block.\n' >&2
   exit 2
 fi
 
