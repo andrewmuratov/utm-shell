@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-VERSION='1.5.0'
+VERSION='1.6.0'
 REPO_RAW='https://raw.githubusercontent.com/andrewmuratov/utm-shell/main'
 VPN_GUIDE='https://security.utoronto.ca/services/vpn/usage-guide/'
-VPN_DOWNLOAD='https://uoft.me/cisco-vpn-download'
 VPN_SERVER='general.vpn.utoronto.ca'
 STATE_DIR="$HOME/.config/utm-shell"
 STATE_FILE="$STATE_DIR/config"
@@ -22,7 +21,7 @@ else
 fi
 
 usage() {
-  cat <<'EOF'
+  cat <<'EOF_HELP'
 utm — UTM lab access
 
   utm                 connect
@@ -33,7 +32,7 @@ utm — UTM lab access
   utm doctor          diagnose problems
   utm update          update/repair
   utm help            show this help
-EOF
+EOF_HELP
 }
 
 state_value() {
@@ -64,6 +63,32 @@ open_url() {
   fi
 }
 
+is_wsl() {
+  [[ -n "${WSL_DISTRO_NAME:-}" ]] || grep -qi microsoft /proc/version 2>/dev/null
+}
+
+windows_vpn_path() {
+  command -v powershell.exe >/dev/null 2>&1 || return 1
+  powershell.exe -NoProfile -Command '$p=@("$env:ProgramFiles\Cisco\Cisco Secure Client\vpnui.exe","$env:ProgramFiles\Cisco\Cisco Secure Client\UI\vpnui.exe","${env:ProgramFiles(x86)}\Cisco\Cisco Secure Client\vpnui.exe","${env:ProgramFiles(x86)}\Cisco\Cisco Secure Client\UI\vpnui.exe","${env:ProgramFiles(x86)}\Cisco\Cisco AnyConnect Secure Mobility Client\vpnui.exe")|Where-Object{Test-Path $_}|Select-Object -First 1; if($p){Write-Output $p; exit 0}else{exit 1}' 2>/dev/null | tr -d '\r'
+}
+
+vpn_client_available() {
+  case "$(uname -s 2>/dev/null || true)" in
+    Darwin)
+      open -Ra 'Cisco Secure Client' >/dev/null 2>&1 || open -Ra 'Cisco AnyConnect Secure Mobility Client' >/dev/null 2>&1
+      ;;
+    Linux*)
+      if is_wsl; then
+        windows_vpn_path >/dev/null 2>&1
+      else
+        [[ -x /opt/cisco/secureclient/bin/vpnui || -x /opt/cisco/anyconnect/bin/vpnui ]] || command -v vpnui >/dev/null 2>&1
+      fi
+      ;;
+    MINGW*|MSYS*|CYGWIN*) windows_vpn_path >/dev/null 2>&1 ;;
+    *) return 1 ;;
+  esac
+}
+
 launch_vpn_client() {
   case "$(uname -s 2>/dev/null || true)" in
     Darwin)
@@ -75,6 +100,13 @@ launch_vpn_client() {
       fi
       ;;
     Linux*)
+      if is_wsl; then
+        local win_path
+        win_path="$(windows_vpn_path 2>/dev/null || true)"
+        [[ -n "$win_path" ]] || return 1
+        powershell.exe -NoProfile -Command "Start-Process -FilePath '$win_path'" >/dev/null 2>&1
+        return $?
+      fi
       local candidate
       for candidate in /opt/cisco/secureclient/bin/vpnui /opt/cisco/anyconnect/bin/vpnui; do
         if [[ -x "$candidate" ]]; then
@@ -88,9 +120,11 @@ launch_vpn_client() {
       fi
       ;;
     MINGW*|MSYS*|CYGWIN*)
-      if command -v powershell.exe >/dev/null 2>&1; then
-        powershell.exe -NoProfile -Command '$p=@("$env:ProgramFiles\Cisco\Cisco Secure Client\vpnui.exe","$env:ProgramFiles\Cisco\Cisco Secure Client\UI\vpnui.exe","${env:ProgramFiles(x86)}\Cisco\Cisco Secure Client\vpnui.exe","${env:ProgramFiles(x86)}\Cisco\Cisco Secure Client\UI\vpnui.exe","${env:ProgramFiles(x86)}\Cisco\Cisco AnyConnect Secure Mobility Client\vpnui.exe")|Where-Object{Test-Path $_}|Select-Object -First 1; if($p){Start-Process $p; exit 0}else{exit 1}' >/dev/null 2>&1 && return 0
-      fi
+      local win_path
+      win_path="$(windows_vpn_path 2>/dev/null || true)"
+      [[ -n "$win_path" ]] || return 1
+      powershell.exe -NoProfile -Command "Start-Process -FilePath '$win_path'" >/dev/null 2>&1
+      return $?
       ;;
   esac
   return 1
@@ -112,49 +146,117 @@ probe_network() {
   PROBE_OUTPUT="$out"
 }
 
+print_connect_steps() {
+  printf '\n%sUTORvpn%s\n' "$BLUE" "$RESET"
+  printf '  %s1.%s Cisco Secure Client opened.\n' "$BLUE" "$RESET"
+  printf '  %s2.%s Connect to %s%s%s.\n' "$BLUE" "$RESET" "$BLUE" "$VPN_SERVER" "$RESET"
+  printf '  %s3.%s Sign in with your UTORid and password.\n\n' "$BLUE" "$RESET"
+}
+
+print_install_steps() {
+  printf '\n%sUTORvpn setup%s\n' "$BLUE" "$RESET"
+  printf '  %s1.%s U of T VPN instructions opened in your browser.\n' "$BLUE" "$RESET"
+
+  case "$(uname -s 2>/dev/null || true)" in
+    Darwin)
+      printf '  %s2.%s Download Cisco Secure Client for macOS.\n' "$BLUE" "$RESET"
+      printf '  %s3.%s Run the .pkg and install only the VPN module.\n' "$BLUE" "$RESET"
+      ;;
+    Linux*)
+      if is_wsl; then
+        printf '  %s2.%s Install Cisco Secure Client on Windows, not inside WSL.\n' "$BLUE" "$RESET"
+        printf '  %s3.%s Leave this terminal open.\n' "$BLUE" "$RESET"
+      elif command -v apt >/dev/null 2>&1; then
+        printf '  %s2.%s Download + extract Cisco Secure Client for Linux.\n' "$BLUE" "$RESET"
+        printf '  %s3.%s In the extracted folder, run:\n' "$BLUE" "$RESET"
+        printf '       %ssudo apt install ./cisco-secure-client-vpn-*_amd64.deb%s\n' "$GREEN" "$RESET"
+      elif command -v dnf >/dev/null 2>&1; then
+        printf '  %s2.%s Download + extract Cisco Secure Client for Linux.\n' "$BLUE" "$RESET"
+        printf '  %s3.%s In the extracted folder, run:\n' "$BLUE" "$RESET"
+        printf '       %ssudo dnf install ./cisco-secure-client-vpn-*.rpm%s\n' "$GREEN" "$RESET"
+      else
+        printf '  %s2.%s Download Cisco Secure Client for Linux.\n' "$BLUE" "$RESET"
+        printf '  %s3.%s Install the VPN package using your system package manager.\n' "$BLUE" "$RESET"
+      fi
+      ;;
+    MINGW*|MSYS*|CYGWIN*)
+      printf '  %s2.%s Download Cisco Secure Client for Windows.\n' "$BLUE" "$RESET"
+      printf '  %s3.%s Run the .msi installer.\n' "$BLUE" "$RESET"
+      ;;
+    *)
+      printf '  %s2.%s Download Cisco Secure Client for your computer.\n' "$BLUE" "$RESET"
+      printf '  %s3.%s Install the VPN component.\n' "$BLUE" "$RESET"
+      ;;
+  esac
+
+  printf '  %s4.%s Leave this terminal open — utm-shell will continue automatically.\n\n' "$BLUE" "$RESET"
+}
+
 wait_for_vpn() {
   local i spin='|/-\\'
   printf 'Waiting for UTORvpn... '
   for ((i=0; i<90; i++)); do
     probe_network
     if [[ "$PROBE_RESULT" != 'network' ]]; then
-      printf '\r%s✓ UTORvpn connected%s        \n' "$GREEN" "$RESET"
+      printf '\r%s✓ UTORvpn connected%s                    \n' "$GREEN" "$RESET"
       return 0
     fi
     printf '\rWaiting for UTORvpn... %s' "${spin:i%4:1}"
     sleep 2
   done
-  printf '\r%sStill offline.%s              \n' "$YELLOW" "$RESET"
+  printf '\r%sStill offline.%s                          \n' "$YELLOW" "$RESET"
+  return 2
+}
+
+wait_for_vpn_client() {
+  local i spin='|/-\\'
+  printf 'Waiting for Cisco Secure Client... '
+  for ((i=0; i<300; i++)); do
+    if vpn_client_available; then
+      printf '\r%s✓ Cisco Secure Client installed%s        \n' "$GREEN" "$RESET"
+      launch_vpn_client || return 2
+      print_connect_steps
+      wait_for_vpn
+      return $?
+    fi
+    printf '\rWaiting for Cisco Secure Client... %s' "${spin:i%4:1}"
+    sleep 2
+  done
+  printf '\r%sStill waiting for Cisco Secure Client.%s  \n' "$YELLOW" "$RESET"
   return 2
 }
 
 vpn_open() {
-  if launch_vpn_client; then
-    printf '%sOpened Cisco Secure Client.%s Connect to %s.\n' "$GREEN" "$RESET" "$VPN_SERVER"
+  probe_network
+  if [[ "$PROBE_RESULT" != 'network' ]]; then
+    printf '%s✓ UTM is already reachable.%s\n' "$GREEN" "$RESET"
     return 0
   fi
 
-  open_url "$VPN_DOWNLOAD" || open_url "$VPN_GUIDE" || true
-  printf '%sCisco Secure Client is not installed.%s\n' "$YELLOW" "$RESET"
-  printf 'Opened the official U of T download page. Install the VPN module, then run `utm` again.\n'
-  return 2
+  if launch_vpn_client; then
+    print_connect_steps
+    wait_for_vpn
+    return $?
+  fi
+
+  open_url "$VPN_GUIDE" || true
+  print_install_steps
+  wait_for_vpn_client
 }
 
 ensure_network() {
   probe_network
   [[ "$PROBE_RESULT" == 'reachable' || "$PROBE_RESULT" == 'unknown' ]] && return 0
 
-  printf '\n%sUTORvpn required off campus.%s\n' "$YELLOW" "$RESET"
   if launch_vpn_client; then
-    printf 'Cisco Secure Client opened. Connect to %s.\n' "$VPN_SERVER"
+    print_connect_steps
     wait_for_vpn
     return $?
   fi
 
-  open_url "$VPN_DOWNLOAD" || open_url "$VPN_GUIDE" || true
-  printf 'Cisco Secure Client is not installed. The official U of T download page was opened.\n'
-  printf 'Install the VPN module, then run `utm` again.\n'
-  return 2
+  open_url "$VPN_GUIDE" || true
+  print_install_steps
+  wait_for_vpn_client
 }
 
 show_status() {
@@ -199,11 +301,11 @@ set_host() {
 }
 
 show_files() {
-  cat <<EOF
+  cat <<EOF_FILES
 scp FILE ${SSH_ALIAS}:~/            # computer → UTM
 scp ${SSH_ALIAS}:~/FILE .            # UTM → computer
 scp -r FOLDER ${SSH_ALIAS}:~/        # folder → UTM
-EOF
+EOF_FILES
 }
 
 run_doctor() {
