@@ -2,20 +2,11 @@
 
 You do **not** need a GitHub account or prior SSH knowledge.
 
-## 1. Have two things ready
-
-- your **UTORid**
-- a real UTM lab computer name, for example `dh2026pc08`
-
-`dh20XYpcNM` is only a template from the course guide. Do not type it literally.
-
-You can run setup **on campus or at home**.
-
-## 2. Paste one command
+## 1. Paste one command
 
 ### Windows 10 / 11
 
-Open **PowerShell** or **Windows Terminal → PowerShell** and paste:
+Open PowerShell and paste:
 
 ```powershell
 irm https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/setup.ps1 | iex
@@ -29,130 +20,69 @@ Open a terminal and paste:
 curl -fsSL https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/setup.sh | bash
 ```
 
-The installer asks for your UTORid and lab computer name. It creates the short local command `utm`, sets up SSH, and guides you through the one-time key login.
+On a new install, enter your **UTORid**. That's normally the only question.
 
-Your UTORid password may be requested **once** by SSH. Password characters are normally invisible while you type; this is expected. utm-shell does not read or save the password.
-
-## 3. If you are at home, follow the VPN prompt
-
-UTM lab computers normally require the U of T network. At home, on public Wi-Fi, or on another off-campus network, setup may display:
+The default lab computer is `dh2026pc08`. Change it later with:
 
 ```text
-UTM is not reachable from this network.
-
-This is normal if you're at home or off campus.
-UTM lab computers normally require either:
-  • the U of T campus network, or
-  • UTORvpn
-
-Press Enter to open/setup UTORvpn.
+utm host HOST
 ```
 
-Press **Enter**.
+## 2. If you're off campus
 
-- If Cisco Secure Client is already installed, utm-shell opens it.
-- If it is not installed, utm-shell opens U of T's official installation guide.
+You do not need to figure out the network error yourself.
 
-The current general VPN connection is:
+If UTM is unreachable, setup automatically does one of these:
+
+- **Cisco Secure Client installed:** opens it and waits for UTORvpn to connect
+- **not installed:** opens U of T's official Cisco Secure Client download page
+
+UTORvpn server:
 
 ```text
-Server: general.vpn.utoronto.ca
-Group:  UofT Default
+general.vpn.utoronto.ca
 ```
 
-Sign in with your UTORid and password. After Cisco Secure Client says it is connected, return to the terminal and press Enter. Setup retries automatically.
+After installing the VPN module, paste the same setup command again. It resumes from the saved setup.
 
-Full VPN details: [UTORvpn guide](docs/utorvpn.md).
+U of T VPN instructions: https://security.utoronto.ca/services/vpn/usage-guide/
 
-## 4. From then on, type one word
+## 3. One-time SSH login
+
+SSH may ask for your UTORid password once so it can install your public key.
+
+Your password is handled by SSH and is not stored by utm-shell.
+
+## 4. Done
+
+From then on:
 
 ```text
 utm
 ```
 
-On campus, it connects directly. Off campus, it checks first and helps with UTORvpn instead of making you wait for an SSH timeout.
+On campus it connects directly. Off campus it opens/waits for UTORvpn automatically.
 
-## Commands worth remembering
+## Useful commands
 
 ```text
 utm                 connect
-utm status          check whether everything is ready
+utm status          check connection
 utm vpn             open/setup UTORvpn
-utm host HOST       switch lab computers
-utm files           show file-copy examples
+utm host [HOST]     show/change lab computer
+utm files           file-copy examples
 utm doctor          diagnose problems
-utm update          update/repair the setup
-utm help            show all local commands
+utm update          update/repair
+utm help            help
 ```
 
-Raw `ssh utm` still works, but `utm` is the friendlier default.
-
-## What success looks like
+Inside UTM:
 
 ```text
 UTM yourutorid@dh2026pc08 ~
 ❯
 ```
 
-You are now working on the remote UTM lab computer. Leave with:
+Use `utm-help` for the remote shortcuts and `bye` to disconnect.
 
-```text
-bye
-```
-
-or `exit`.
-
-## Useful commands after you are connected
-
-```text
-utm-help   show the remote shortcuts
-ll         detailed file listing
-c          clear the terminal
-py         run python3
-mkcd DIR   make a directory and enter it
-ff NAME    find a file/directory
-```
-
-## Copy a file
-
-Run this on **your own computer**, not inside UTM:
-
-```bash
-scp exercise.py utm:~/
-```
-
-If you forget the syntax:
-
-```text
-utm files
-```
-
-## Change lab computer
-
-```text
-utm host dh2026pc09
-```
-
-Then:
-
-```text
-utm status
-```
-
-## Something broke?
-
-Use:
-
-```text
-utm status
-utm doctor
-utm update
-```
-
-`utm update` uses your saved setup information, so it normally repairs or upgrades the installation without asking the initial questions again.
-
-If UTM is reachable but a known-correct password is rejected, see [Login problems](docs/login-problems.md). The cause can be account provisioning on the lab system rather than your computer.
-
-## Safety
-
-Never send anyone your UTORid password, private SSH key, or authentication tokens. Course staff may reasonably ask for your UTORid and the hostname you tried, but they do not need your password.
+If something fails, run `utm doctor`. If a known-correct password is rejected while UTM is reachable, see [Login problems](docs/login-problems.md).
