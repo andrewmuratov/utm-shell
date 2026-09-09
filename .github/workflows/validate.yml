@@ -37,6 +37,8 @@ jobs:
           bash install.sh --help >/dev/null
           bash uninstall.sh --help >/dev/null
           bash doctor.sh --help >/dev/null
+          grep -q 'uoft.me/cisco-vpn-download' connect.sh
+          grep -q "DEFAULT_HOST='dh2026pc08'" setup.sh
 
       - name: Test remote shell in a clean temporary HOME
         run: |
@@ -44,7 +46,7 @@ jobs:
           HOME="$temp_home" bash remote.sh 1 >/dev/null
           bash -n "$temp_home/.bashrc"
           bash -n "$temp_home/.config/utm-shell/shell.sh"
-          HOME="$temp_home" bash --noprofile --norc -ic 'source ~/.config/utm-shell/shell.sh; type c usage py gs utm-help >/dev/null; utm-version' 2>/dev/null | grep -q '1.4.0'
+          HOME="$temp_home" bash --noprofile --norc -ic 'source ~/.config/utm-shell/shell.sh; type c usage py gs utm-help >/dev/null; utm-version' 2>/dev/null | grep -q '1.5.0'
 
   windows:
     name: windows-latest / PowerShell
@@ -81,3 +83,5 @@ jobs:
           .\install.ps1 -Help | Out-Null
           .\uninstall.ps1 -Help | Out-Null
           .\doctor.ps1 -Help | Out-Null
+          if ((Get-Content .\connect.ps1 -Raw) -notmatch 'uoft.me/cisco-vpn-download') { throw 'VPN download shortcut missing' }
+          if ((Get-Content .\setup.ps1 -Raw) -notmatch "DefaultHost = 'dh2026pc08'") { throw 'Default host missing' }
