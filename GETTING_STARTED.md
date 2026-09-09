@@ -8,47 +8,78 @@ Have these ready:
 
 - your **UTORid**
 - a real UTM lab computer name, such as `dh2026pc08`
-- either U of T campus Wi-Fi or **UTORvpn**
+- an internet connection
 
 `dh20XYpcNM` is only a template. Do not type it literally.
 
-## Windows 10 / 11
+## Install utm-shell
 
-1. Open **PowerShell** or **Windows Terminal → PowerShell**.
-2. Paste this one line:
+### Windows 10 / 11
+
+Open **PowerShell** or **Windows Terminal → PowerShell** and paste:
 
 ```powershell
 irm https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/setup.ps1 | iex
 ```
 
-3. Enter your UTORid.
-4. Enter the lab computer name.
-5. Enter your UTORid password if SSH asks for it. This should be a one-time setup step.
+### macOS / Linux / WSL / ChromeOS Linux
 
-Then connect anytime with:
-
-```powershell
-ssh utm
-```
-
-## macOS / Linux / WSL / ChromeOS Linux
-
-1. Open a terminal.
-2. Paste this one line:
+Open a terminal and paste:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/setup.sh | bash
 ```
 
-3. Enter your UTORid.
-4. Enter the lab computer name.
-5. Enter your UTORid password if SSH asks for it. This should be a one-time setup step.
+The installer asks only for your UTORid and lab computer name.
 
-Then connect anytime with:
+If you are at home or otherwise off campus, the installer may discover that it cannot reach the UTM lab network. That is expected: UTM lab machines normally require the U of T network. The installer will offer to open **UTORvpn** setup and wait while you connect.
 
-```bash
-ssh utm
+Your UTORid password may be requested once while your public SSH key is installed.
+
+## Connect after setup
+
+Open a new terminal and type:
+
+```text
+utm
 ```
+
+Use `utm` rather than raw `ssh utm` for the friendliest experience. It checks network access first.
+
+### On campus
+
+`utm` should connect directly.
+
+### At home or off campus
+
+`utm` explains that UTORvpn is needed and offers:
+
+```text
+[1] Open Cisco Secure Client / UTORvpn setup
+[2] Open the official U of T VPN guide
+[r] Retry
+[q] Quit
+```
+
+If Cisco Secure Client is installed, option 1 opens it. If it is not installed, the official U of T setup guide opens instead.
+
+You can also open VPN help at any time:
+
+```text
+utm vpn
+```
+
+The general UTORvpn address is:
+
+```text
+general.vpn.utoronto.ca
+```
+
+Official U of T instructions:
+
+https://security.utoronto.ca/services/vpn/usage-guide/
+
+After Cisco Secure Client says you are connected, return to your terminal and retry `utm`.
 
 ## What success looks like
 
@@ -90,11 +121,7 @@ Run the **same setup command again**. The installer is designed to repair and up
 
 If login says `Permission denied` even though your password is definitely correct, see [Login problems](docs/login-problems.md). Your UTORid may not yet be provisioned on the lab system.
 
-If the hostname cannot be found, check that:
-
-1. it is a real machine name such as `dh2026pc08`
-2. you are on campus Wi-Fi or UTORvpn
-3. there is no typo
+If raw `ssh utm` hangs or times out at home, use `utm` instead. It performs a short network pre-check and explains the UTORvpn requirement.
 
 ## Safety
 
