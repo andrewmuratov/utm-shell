@@ -5,6 +5,8 @@ STATE_FILE="$HOME/.config/utm-shell/config"
 SSH_CONFIG="$HOME/.ssh/config"
 SSH_START="# >>> utm-shell >>>"
 SSH_END="# <<< utm-shell <<<"
+PATH_START="# >>> utm-shell path >>>"
+PATH_END="# <<< utm-shell path <<<"
 LOCAL_ONLY=0
 KEEP_AUTH_KEY=0
 
@@ -24,7 +26,7 @@ usage() {
 Usage: ./uninstall.sh [options]
 
 Options:
-  --local-only      Remove only the local SSH configuration
+  --local-only      Remove only the local setup
   --keep-auth-key   Leave the public key in ~/.ssh/authorized_keys on UTM
   -h, --help        Show this help
 USAGE
@@ -40,7 +42,6 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -f "$STATE_FILE" ]]; then
-  # This file is created by utm-shell and contains shell-escaped scalar values.
   # shellcheck disable=SC1090
   source "$STATE_FILE"
 else
@@ -85,11 +86,7 @@ LOGIN_FILE=""
 LOGIN_MANAGED=1
 HUSH_CREATED=0
 
-if [[ -f "$STATE_FILE" ]]; then
-  # shellcheck disable=SC1090
-  source "$STATE_FILE"
-fi
-
+if [[ -f "$STATE_FILE" ]]; then source "$STATE_FILE"; fi
 remove_block() {
   local file="$1" start="$2" end="$3" tmp
   [[ -f "$file" ]] || return 0
@@ -102,22 +99,16 @@ remove_block() {
   cat "$tmp" > "$file"
   rm -f "$tmp"
 }
-
 remove_block "$HOME/.bashrc" "$START" "$END"
 if [[ "${LOGIN_MANAGED:-1}" == "1" ]]; then
-  if [[ -n "${LOGIN_FILE:-}" ]]; then
-    remove_block "$LOGIN_FILE" "$LOGIN_START" "$LOGIN_END"
+  if [[ -n "${LOGIN_FILE:-}" ]]; then remove_block "$LOGIN_FILE" "$LOGIN_START" "$LOGIN_END"
   else
     remove_block "$HOME/.bash_profile" "$LOGIN_START" "$LOGIN_END"
     remove_block "$HOME/.bash_login" "$LOGIN_START" "$LOGIN_END"
     remove_block "$HOME/.profile" "$LOGIN_START" "$LOGIN_END"
   fi
 fi
-
-if [[ "${HUSH_CREATED:-0}" == "1" ]]; then
-  rm -f "$HOME/.hushlogin"
-fi
-
+if [[ "${HUSH_CREATED:-0}" == "1" ]]; then rm -f "$HOME/.hushlogin"; fi
 if [[ -n "$PUB_B64" && -f "$HOME/.ssh/authorized_keys" ]]; then
   pub="$(printf '%s' "$PUB_B64" | base64 -d)"
   tmp="$(mktemp)"
@@ -125,7 +116,6 @@ if [[ -n "$PUB_B64" && -f "$HOME/.ssh/authorized_keys" ]]; then
   cat "$tmp" > "$HOME/.ssh/authorized_keys"
   rm -f "$tmp"
 fi
-
 rm -rf "$HOME/.config/utm-shell"
 REMOTE_EOF
 )
@@ -138,13 +128,18 @@ REMOTE_EOF
   fi
 fi
 
-# Close a multiplexed control connection before removing its config entry.
 ssh -O exit "$SSH_ALIAS" >/dev/null 2>&1 || true
 remove_block "$SSH_CONFIG" "$SSH_START" "$SSH_END"
 ok "Local SSH config cleaned"
 
-rm -f "$STATE_FILE"
-rmdir "$HOME/.config/utm-shell" 2>/dev/null || true
+# Remove only local shell/PATH blocks owned by utm-shell.
+remove_block "$HOME/.bashrc" "$PATH_START" "$PATH_END"
+remove_block "$HOME/.zshrc" "$PATH_START" "$PATH_END"
+remove_block "$HOME/.profile" "$PATH_START" "$PATH_END"
+rm -f "$HOME/.config/fish/conf.d/utm-shell.fish" 2>/dev/null || true
+rm -f "$HOME/.local/bin/utm" 2>/dev/null || true
+rm -rf "$HOME/.config/utm-shell"
+ok "Smart utm command removed"
 
 if [[ "$KEY_CREATED" == "1" && -n "$KEY_PATH" && -f "$KEY_PATH" ]]; then
   printf '\nA dedicated key was created by utm-shell at:\n  %s\n' "$KEY_PATH"
