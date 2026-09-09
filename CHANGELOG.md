@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.2.0 — 2026-09-09
+
+- replaced duplicated remote shell blocks with a single shared `remote.sh` installer
+- fixed the Bash alias/function parse failure that could produce `syntax error near unexpected token '('`
+- made rerunning setup repair older broken managed `~/.bashrc` blocks
+- moved managed shell commands into `~/.config/utm-shell/shell.sh` for safer upgrades
+- made `c`/`cls` clear the screen and scrollback without depending on remote terminfo
+- fixed `usage` so hidden files are included and empty directories are explained
+- made `py` a friendly `python3` wrapper
+- made Git shortcuts report a friendly message outside repositories
+- added `utm-version` and `bye`
+- added one-command `setup.sh` and `setup.ps1` entrypoints
+- reduced normal setup to two questions plus a one-time UTORid password prompt
+- switched the default to a dedicated UTM SSH key to avoid key-selection prompts
+- kept `install.sh` and `install.ps1` as compatibility wrappers
+- expanded CI to syntax-check and smoke-test the new setup and remote shell files
+
 ## 1.1.1 — 2026-09-09
 
 - made `usage` include hidden files and dot-directories instead of appearing empty in a fresh home directory
