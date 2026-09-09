@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-VERSION="1.3.0"
+VERSION="1.4.0"
 USE_HUSHLOGIN="${1:-1}"
 BASHRC="$HOME/.bashrc"
 START="# >>> utm-shell >>>"
@@ -28,21 +28,13 @@ remove_block() {
   rm -f "$tmp"
 }
 
-# Keep the real shell customizations in their own file. This is deliberate:
-# older/manual setups can define aliases such as `usage`, and Bash expands
-# aliases while parsing a compound block. A separate sourced file can unalias
-# old names before defining functions, so upgrades repair themselves cleanly.
 cat > "$SHELL_FILE" <<'SHELL_EOF'
-# Managed by utm-shell. Rerun the installer to update this file.
+# Managed by utm-shell. Rerun `utm update` to update this file.
 
-# Remove names used by older/manual utm-shell setups before Bash parses the
-# function definitions below.
 unalias c cls usage py gs gd gl utm-help utm-version 2>/dev/null || true
 
 [[ $- == *i* ]] || return 0
 
-# Modern terminals can advertise a TERM entry missing from the older UTM
-# terminfo database. Fall back only on the remote machine when needed.
 if [[ -n ${TERM:-} ]] && command -v infocmp >/dev/null 2>&1 && ! infocmp "$TERM" >/dev/null 2>&1; then
   export TERM=xterm-256color
 fi
@@ -66,10 +58,7 @@ alias reload='source ~/.bashrc'
 alias disk='df -h'
 alias bye='exit'
 
-function c {
-  printf '\033[H\033[2J\033[3J'
-}
-
+function c { printf '\033[H\033[2J\033[3J'; }
 function cls { c; }
 
 function usage {
@@ -121,7 +110,7 @@ function ff {
 }
 
 function path { printf '%s\n' "$PATH" | tr ':' '\n'; }
-function utm-version { printf 'utm-shell 1.3.0\n'; }
+function utm-version { printf 'utm-shell 1.4.0\n'; }
 
 function utm-help {
   cat <<'HELP_EOF'
@@ -141,6 +130,8 @@ utm-shell commands
   gs / gd / gl  friendly Git status / diff / log shortcuts
   utm-version   show the installed utm-shell version
   utm-help      show this help
+
+On your own computer, use `utm help` for connection/VPN/file-copy commands.
 HELP_EOF
 }
 
