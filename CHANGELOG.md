@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.3.0 — 2026-09-09
+
+- added a smart local `utm` command as the recommended way to connect
+- added a short preflight that detects common off-campus/network-unreachable failures before interactive SSH
+- added clear UTORvpn guidance instead of leaving users at a long SSH timeout
+- added `utm vpn` to launch Cisco Secure Client when installed or open U of T's official UTORvpn setup guide
+- documented `general.vpn.utoronto.ca` as the general UTORvpn address
+- made setup pause and offer VPN help when run off campus, then retry after the user connects
+- added short SSH connect timeouts so raw `ssh utm` also fails quickly
+- added the local `utm` helper on Windows, macOS, Linux, WSL, ChromeOS Linux, and supported Unix shells
+- updated uninstallers to remove the smart helper
+- expanded CI to parse and smoke-test the new connection helpers
+
 ## 1.2.0 — 2026-09-09
 
 - replaced duplicated remote shell blocks with a single shared `remote.sh` installer
