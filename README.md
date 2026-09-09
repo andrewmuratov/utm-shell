@@ -1,9 +1,9 @@
 <div align="center">
-  <img src=".github/assets/terminal.svg" alt="utm-shell terminal preview" width="820">
+  <img src=".github/assets/terminal.svg" alt="Terminal preview showing the command ssh utm and a clean blue UTM prompt" width="820">
 
 # utm-shell
 
-**A clean, reversible SSH + Bash setup for UTM lab machines — from Windows, macOS, Linux, WSL, and other Unix-like systems.**
+**Easy UTM lab SSH setup for Windows, macOS, Linux, WSL, ChromeOS Linux, and other Unix-like systems.**
 
 [![Validate](https://github.com/andrewmuratov/utm-shell/actions/workflows/validate.yml/badge.svg)](https://github.com/andrewmuratov/utm-shell/actions/workflows/validate.yml)
 [![MIT License](https://img.shields.io/badge/license-MIT-2f81f7.svg)](LICENSE)
@@ -11,34 +11,31 @@
 [![macOS](https://img.shields.io/badge/macOS-supported-000000?logo=apple&logoColor=white)](docs/platforms.md#macos)
 [![Linux](https://img.shields.io/badge/Linux-supported-FCC624?logo=linux&logoColor=black)](docs/platforms.md#linux)
 
-`ssh utm` → passwordless login, a clean remote prompt, compatible terminal behavior, and useful lab shortcuts.
+**No GitHub account required. No shell framework. No remote sudo.**
+
+After setup, connecting is simply:
+
+```text
+ssh utm
+```
 
 </div>
 
 ---
 
-## Platform support
+## Start here — about 2 minutes
 
-| Your computer | Native setup | SSH | SCP | Key login | X11 GUI forwarding |
-|---|---|---:|---:|---:|---:|
-| **Windows 10/11** | PowerShell `install.ps1` | ✓ | ✓ | ✓ | ✓ with an X server |
-| **macOS** | Bash `install.sh` | ✓ | ✓ | ✓ | ✓ with XQuartz |
-| **Linux** | Bash `install.sh` | ✓ | ✓ | ✓ | ✓ |
-| **WSL** | Bash `install.sh` | ✓ | ✓ | ✓ | ✓ with WSLg/X |
-| **ChromeOS Linux** | Bash `install.sh` | ✓ | ✓ | ✓ | environment-dependent |
-| **BSD / other Unix** | Bash `install.sh` | ✓* | ✓* | ✓* | platform-dependent |
+You only need:
 
-`*` Requires Bash and a modern OpenSSH client.
+1. your **UTORid**
+2. a real UTM lab hostname, for example `dh2026pc08`
+3. either **campus Wi-Fi** or **UTORvpn**
 
-See **[Platform support & X11 guide](docs/platforms.md)** for detailed Windows, macOS, Linux, WSL, GUI-forwarding, and host-key instructions.
+> If you have never used SSH before, use the step-by-step **[Getting Started guide](GETTING_STARTED.md)**. It assumes no prior terminal knowledge.
 
-> UTM lab hosts are reachable only while you are on the **U of T network** or connected through **UTORvpn**.
+### Windows 10 / 11
 
-## Install
-
-### Windows 10 / 11 — PowerShell
-
-No WSL, Git Bash, or Cygwin required.
+Open **PowerShell** or **Windows Terminal → PowerShell**, then paste:
 
 ```powershell
 $installer = "$env:TEMP\utm-shell-install.ps1"
@@ -46,81 +43,113 @@ Invoke-WebRequest https://raw.githubusercontent.com/andrewmuratov/utm-shell/main
 & $installer
 ```
 
-The installer uses the Windows OpenSSH client that ships as an optional Windows feature. If it is not installed, the script tells you exactly how to enable it.
+No WSL, Git Bash, or Cygwin is required.
 
-### macOS / Linux / WSL
+### macOS / Linux / WSL / ChromeOS Linux
+
+Open a terminal and paste:
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/install.sh)
 ```
 
-### Prefer to inspect first?
+The installer asks for your UTORid and lab hostname, then walks you through the rest.
 
-```bash
-git clone https://github.com/andrewmuratov/utm-shell.git
-cd utm-shell
-```
+Your UTORid password may be requested **once** while your public SSH key is added to your UTM account. The project never reads or stores that password.
 
-Then run either:
-
-```bash
-./install.sh
-```
-
-or, on Windows:
-
-```powershell
-.\install.ps1
-```
-
-The installer asks for only what it needs:
-
-```text
-UTORid: yourutorid
-UTM lab host (for example dh2026pc08): dh2026pc08
-```
-
-It can reuse an existing Ed25519 key or create a dedicated UTM key. Your UTORid password may be requested **once** while the public key is installed.
-
-After setup, every supported platform uses the same command:
+When setup finishes:
 
 ```text
 ssh utm
 ```
+
+You should get a prompt like:
 
 ```text
 UTM yourutorid@dh2026pc08 ~
 ❯
 ```
 
-## What it sets up
+### Prefer not to run a downloaded script directly?
+
+Download or clone the repository, inspect the script, and run it locally:
+
+```bash
+git clone https://github.com/andrewmuratov/utm-shell.git
+cd utm-shell
+./install.sh
+```
+
+On Windows PowerShell:
+
+```powershell
+git clone https://github.com/andrewmuratov/utm-shell.git
+cd utm-shell
+.\install.ps1
+```
+
+You can also use GitHub's **Code → Download ZIP** button if you do not have Git installed.
+
+## What it does
 
 ### On your computer
 
 - creates a managed `Host utm` entry in your OpenSSH config
 - remembers your UTORid and selected lab hostname
-- configures secure public-key authentication
+- sets up secure public-key authentication
+- reuses an existing Ed25519 key or creates a dedicated UTM key
 - keeps idle SSH sessions alive
-- uses a dedicated or existing Ed25519 key without ever uploading the private key
-- works with `ssh` and `scp` natively on Windows, macOS, and Linux
-- keeps Unix SSH connection multiplexing enabled for faster repeated connections
-- avoids Unix-only SSH multiplexing options in the native Windows configuration
+- supports `ssh` and `scp` on all major desktop platforms
+- uses Unix connection multiplexing where supported
+- avoids Unix-only options in native Windows OpenSSH
 
 ### On the UTM machine
 
-The remote side is the same no matter what OS you use locally:
+- adds a clearly marked and removable block to `~/.bashrc`
+- gives the shell a clean blue `UTM` prompt
+- works around unsupported modern terminal types when necessary
+- improves Bash history and Up/Down history search
+- adds a small set of useful commands
+- hides the large Ubuntu login message unless you opt out
 
-- adds a clearly marked, removable block to `~/.bashrc`
-- gives the remote shell a visually distinct blue `UTM` prompt
-- fixes incompatible modern terminal `TERM` values when necessary
-- improves Bash history and Up/Down prefix search
-- adds a compact set of useful aliases/functions
-- makes SSH login shells load the setup consistently
-- hides the giant Ubuntu login/MOTD wall unless you opt out
+It does **not** replace the university shell, install a framework, disable SSH host verification, overwrite unrelated dotfiles, upload a private key, or require root access on UTM.
 
-It does **not** replace the university shell, install a framework, require root on the UTM machine, disable SSH host verification, or overwrite unrelated dotfile content.
+## Platform support
 
-## Included remote commands
+| Your computer | Setup | SSH | SCP | Key login | X11 GUI forwarding |
+|---|---|---:|---:|---:|---:|
+| **Windows 10/11** | PowerShell | ✓ | ✓ | ✓ | ✓ with an X server |
+| **macOS** | Bash | ✓ | ✓ | ✓ | ✓ with XQuartz |
+| **Linux** | Bash | ✓ | ✓ | ✓ | ✓ |
+| **WSL** | Bash | ✓ | ✓ | ✓ | ✓ with WSLg/X |
+| **ChromeOS Linux** | Bash | ✓ | ✓ | ✓ | environment-dependent |
+| **BSD / other Unix** | Bash | ✓* | ✓* | ✓* | platform-dependent |
+
+`*` Requires Bash and a modern OpenSSH client.
+
+Detailed platform instructions: **[docs/platforms.md](docs/platforms.md)**
+
+## If login says `Permission denied`
+
+A correct password does **not always mean the problem is on your computer**. If the lab host is reachable but both password login and key setup fail, your UTORid may not yet be provisioned on the lab system, or there may be a server-side account issue.
+
+Do not keep changing SSH settings blindly and do not post your password anywhere.
+
+Use the diagnostics first:
+
+```bash
+./doctor.sh
+```
+
+or on Windows:
+
+```powershell
+.\doctor.ps1
+```
+
+Then see **[Login problems](docs/login-problems.md)** for a short decision tree. If it points to an account-side problem, contact course staff or the lab/system administrator with your **UTORid and the hostname you tried**, but never your password or private key.
+
+## Useful commands inside UTM
 
 | Command | What it does |
 |---|---|
@@ -130,55 +159,49 @@ It does **not** replace the university shell, install a framework, require root 
 | `c`, `cls` | clear the terminal |
 | `reload` | reload `~/.bashrc` |
 | `mkcd DIR` | create a directory and enter it |
-| `ff NAME` | find files/directories by name below `.` |
+| `ff NAME` | find files/directories below the current directory |
 | `disk` | show filesystem disk usage |
 | `usage` | show sizes in the current directory |
 | `path` | print `$PATH` one entry per line |
 | `py` | run `python3` |
-| `gs`, `gd`, `gl` | compact Git status/diff/log shortcuts |
-| `utm-help` | show the command reference inside UTM |
+| `gs`, `gd`, `gl` | compact Git shortcuts |
+| `utm-help` | show the command reference |
 
-History search is improved too: type the beginning of an old command, then press **↑/↓** to cycle through matching history entries.
+Type the beginning of an old command and press **↑/↓** to search matching history.
 
-## File transfer — every platform
+## Copy files
 
-OpenSSH includes `scp`, so the same commands work in Bash, macOS Terminal, Linux terminals, Windows Terminal, and PowerShell:
+The same `scp` commands work from macOS, Linux, WSL, and native Windows OpenSSH.
 
 ```bash
-# local → UTM
+# your computer → UTM
 scp exercise.py utm:~/exercise.py
 
-# UTM → local
+# UTM → your computer
 scp utm:~/result.txt ./result.txt
 
 # whole directory
 scp -r lab01 utm:~/labs/
 ```
 
-`rsync` is also convenient on macOS/Linux/WSL when installed, but it is intentionally not required because native Windows does not ship it.
-
 ## Graphical apps / X11
 
-UTM also supports X11 forwarding for graphical Linux applications.
+For trusted X11 forwarding:
 
 ```bash
 ssh -Y utm
 ```
 
-Local requirements differ:
-
-- **Linux:** normally works with X11/XWayland already present
-- **macOS:** install and launch **XQuartz**
-- **Windows:** run an X server such as **MobaXterm**, **VcXsrv**, or **Xming**; native OpenSSH can then forward X11
+- **Linux:** normally uses the existing X11/XWayland environment
+- **macOS:** use XQuartz
+- **Windows:** use an X server such as MobaXterm, VcXsrv, or Xming
 - **WSL:** WSLg can provide the graphical side on supported systems
 
-See **[docs/platforms.md](docs/platforms.md)** for exact setup. `-Y` is trusted X11 forwarding, so use it only with machines you trust.
+See **[docs/platforms.md](docs/platforms.md)** for details.
 
 ## Diagnostics
 
-If anything feels wrong, run the platform-native doctor.
-
-macOS / Linux / WSL:
+macOS / Linux / WSL / ChromeOS Linux:
 
 ```bash
 ./doctor.sh
@@ -190,37 +213,9 @@ Windows PowerShell:
 .\doctor.ps1
 ```
 
-The doctor checks OpenSSH, the managed config, alias resolution, passwordless key authentication, and remote reachability without changing your setup.
-
-## Installer options
-
-### Bash / macOS / Linux / WSL
-
-```text
---user UTORID       UTORid used to log in
---host HOST         lab hostname, short or fully qualified
---alias NAME        local SSH alias (default: utm)
---key PATH          SSH private key to use
---skip-key-copy     do not install the public key on UTM
---no-hushlogin      keep the Ubuntu login banner
-```
-
-### Windows PowerShell
-
-```text
--User UTORID
--HostName HOST
--Alias NAME
--KeyPath PATH
--SkipKeyCopy
--NoHushLogin
-```
-
-Short hostnames such as `dh2026pc08` automatically become `dh2026pc08.utm.utoronto.ca`.
+The doctor checks OpenSSH, config, alias resolution, network reachability, and key authentication without modifying your setup.
 
 ## Uninstall
-
-The setup is reversible.
 
 macOS / Linux / WSL:
 
@@ -236,45 +231,35 @@ Invoke-WebRequest https://raw.githubusercontent.com/andrewmuratov/utm-shell/main
 & $uninstaller
 ```
 
-The uninstaller removes only the marked `utm-shell` configuration, can remove the matching public key from UTM, and intentionally leaves a dedicated private key on your computer so deleting key material is always an explicit choice.
+The uninstaller removes only `utm-shell`-managed configuration. A dedicated private key is intentionally left on your computer so key deletion is always explicit.
 
-## Security and design
+## Security
 
 - SSH host verification stays enabled
 - only your **public** key is copied to UTM
 - private keys never leave your computer
-- UTORid passwords are handled directly by OpenSSH and are never read or stored by utm-shell
-- existing dotfile content is preserved outside managed marker blocks
-- rerunning setup replaces its own block instead of duplicating it
-- no analytics, telemetry, daemon, background service, or credential storage
-- no administrator/root access is needed for the remote UTM setup
+- UTORid passwords are handled directly by OpenSSH
+- existing dotfiles are preserved outside marked blocks
+- rerunning setup replaces its own configuration instead of duplicating it
+- no analytics, telemetry, daemon, or background service
 
-Windows may require administrator privileges **only if you need to install Microsoft's optional OpenSSH Client feature**. utm-shell itself does not silently elevate or install it.
+Windows may require administrator privileges only to enable Microsoft's optional OpenSSH Client feature if it is missing. `utm-shell` itself does not silently elevate.
 
-See [SECURITY.md](SECURITY.md).
+See **[SECURITY.md](SECURITY.md)**.
 
-## Troubleshooting
+## Help
 
-**`Could not resolve hostname ...`**  
-Use a real lab machine such as `dh2026pc08`, not the template `dh20XYpcNM`, and connect to campus Wi-Fi or UTORvpn.
+- **New to SSH?** [Getting Started](GETTING_STARTED.md)
+- **Login failing?** [Login problems](docs/login-problems.md)
+- **Windows/macOS/Linux details?** [Platform guide](docs/platforms.md)
+- **General troubleshooting?** [Troubleshooting guide](docs/troubleshooting.md)
+- **Project support policy?** [SUPPORT.md](SUPPORT.md)
 
-**`Permission denied` while browsing `/student/...`**  
-Normal. Student home directories are permission-protected.
-
-**`xterm-ghostty: unknown terminal type` or another unknown terminal type**  
-The managed remote setup falls back to `xterm-256color` when the UTM terminfo database does not recognize your local terminal.
-
-**`REMOTE HOST IDENTIFICATION HAS CHANGED`**  
-Do not disable host verification globally. Verify the hostname first, then remove only the stale host entry with `ssh-keygen -R <hostname>` if appropriate. See the platform guide.
-
-**I changed lab computers.**  
-Rerun the installer with the new hostname. Its managed SSH block is replaced rather than duplicated.
+When reporting a problem publicly, never include your password, private key, authentication token, or other credentials.
 
 ## Scope
 
 This is a personal convenience project for University of Toronto Mississauga lab access. It is **not affiliated with, endorsed by, or maintained by the University of Toronto**. Official course and U of T IT instructions take precedence if infrastructure or policy changes.
-
-The supported installer matrix covers modern desktop systems with OpenSSH: Windows 10/11, macOS, Linux, WSL, ChromeOS Linux, and Unix-like systems with Bash + OpenSSH. Mobile/locked-down systems without a standard OpenSSH environment can still connect manually but are not targets for the automated installer.
 
 ## License
 
