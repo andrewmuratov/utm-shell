@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-VERSION='1.5.0'
+VERSION='1.6.0'
 REPO_RAW='https://raw.githubusercontent.com/andrewmuratov/utm-shell/main'
 DEFAULT_HOST='dh2026pc08'
 SSH_ALIAS='utm'
@@ -220,7 +220,7 @@ find_authorized_key() {
 if [[ "$SKIP_KEY_COPY" -eq 0 ]]; then
   if ! key_works; then
     if ! "$BIN_DIR/utm" --ensure-network; then
-      printf '%sSetup saved.%s Install/connect UTORvpn, then paste the same setup command again.\n' "$YELLOW" "$RESET"
+      printf '%sSetup saved.%s Connect UTORvpn, then run this setup command again.\n' "$YELLOW" "$RESET"
       exit 2
     fi
 
