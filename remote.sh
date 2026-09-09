@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-VERSION="1.2.0"
+VERSION="1.3.0"
 USE_HUSHLOGIN="${1:-1}"
 BASHRC="$HOME/.bashrc"
 START="# >>> utm-shell >>>"
@@ -67,7 +67,6 @@ alias disk='df -h'
 alias bye='exit'
 
 function c {
-  # Clear the visible screen and scrollback without relying on remote terminfo.
   printf '\033[H\033[2J\033[3J'
 }
 
@@ -122,7 +121,7 @@ function ff {
 }
 
 function path { printf '%s\n' "$PATH" | tr ':' '\n'; }
-function utm-version { printf 'utm-shell 1.2.0\n'; }
+function utm-version { printf 'utm-shell 1.3.0\n'; }
 
 function utm-help {
   cat <<'HELP_EOF'
@@ -154,8 +153,6 @@ PS1='\[\e[1;34m\]UTM\[\e[0m\] \[\e[90m\]\u@\h\[\e[0m\] \[\e[1;37m\]\w\[\e[0m\]\n
 SHELL_EOF
 chmod 600 "$SHELL_FILE"
 
-# Replace only the managed block. This also repairs the v1.1.x block that
-# could fail to parse when an older `usage` alias already existed.
 remove_block "$BASHRC" "$START" "$END"
 cat >> "$BASHRC" <<'BASHRC_EOF'
 
@@ -166,7 +163,6 @@ fi
 # <<< utm-shell <<<
 BASHRC_EOF
 
-# Refuse to leave a broken .bashrc behind.
 if ! bash -n "$BASHRC"; then
   printf 'utm-shell: ~/.bashrc still contains a syntax error outside the managed block.\n' >&2
   printf 'The utm-shell block itself was replaced successfully; inspect ~/.bashrc manually.\n' >&2
