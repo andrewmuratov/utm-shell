@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.6.0 — 2026-09-09
+
+- replaced the vague off-campus message with short numbered UTORvpn instructions
+- switched VPN help to U of T's current official usage guide instead of dropping users onto the legacy-looking VPN portal
+- added platform-specific install steps for Windows, macOS, Ubuntu/Debian, Fedora/RHEL, WSL, and other supported Unix systems
+- after opening the VPN guide, utm-shell now waits for Cisco Secure Client to be installed instead of immediately telling the user to rerun setup
+- once Cisco appears, utm-shell launches it automatically and waits for UTORvpn to connect
+- setup then resumes automatically without another command in the normal case
+- added WSL detection so Cisco Secure Client on the Windows host can be found and launched from WSL when possible
+- updated README, getting-started docs, UTORvpn docs, and CI around the new guided flow
+
 ## 1.5.0 — 2026-09-09
 
 - reduced first-time setup to one normal question: the student's UTORid
