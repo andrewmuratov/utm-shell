@@ -8,9 +8,10 @@ param(
 
 Set-StrictMode -Version 2.0
 $ErrorActionPreference = 'Stop'
-$Version = '1.4.0'
+$Version = '1.5.0'
 $RawBase = 'https://raw.githubusercontent.com/andrewmuratov/utm-shell/main'
 $VpnGuide = 'https://security.utoronto.ca/services/vpn/usage-guide/'
+$VpnDownload = 'https://uoft.me/cisco-vpn-download'
 $VpnServer = 'general.vpn.utoronto.ca'
 $StateDir = Join-Path (Join-Path $HOME '.config') 'utm-shell'
 $AliasFile = Join-Path $StateDir 'alias'
@@ -23,25 +24,16 @@ if (Test-Path $AliasFile) {
 
 function Show-Usage {
 @'
-utm — simple UTM lab access
+utm — UTM lab access
 
-Most of the time:
-  utm                 connect to your configured UTM lab computer
-
-Useful commands:
-  utm status          show host + whether UTM is reachable right now
-  utm vpn             open Cisco Secure Client, or U of T's VPN setup guide
-  utm host             show the configured lab computer
-  utm host HOST        switch to another lab computer
-  utm files           show copy-to/from-UTM examples
-  utm doctor          run current diagnostics
-  utm update          update/repair utm-shell
-  utm raw             run plain `ssh utm`
+  utm                 connect
+  utm status          check connection
+  utm vpn             open/setup UTORvpn
+  utm host [HOST]     show/change lab computer
+  utm files           file-copy examples
+  utm doctor          diagnose problems
+  utm update          update/repair
   utm help            show this help
-
-Off campus:
-  `utm` detects the common home/public-Wi-Fi case before SSH starts and offers
-  UTORvpn help instead of leaving you at a timeout.
 '@ | Write-Host
 }
 
@@ -54,9 +46,9 @@ function Get-SshValue([string]$Name) {
     return ''
 }
 
-function Open-VpnGuide {
-    try { Start-Process $VpnGuide | Out-Null; return $true }
-    catch { Write-Host "Official guide: $VpnGuide"; return $false }
+function Open-Url([string]$Url) {
+    try { Start-Process $Url | Out-Null; return $true }
+    catch { Write-Host $Url; return $false }
 }
 
 function Get-VpnClientPath {
@@ -71,37 +63,29 @@ function Get-VpnClientPath {
         $candidates += (Join-Path $pf86 'Cisco\Cisco Secure Client\UI\vpnui.exe')
         $candidates += (Join-Path $pf86 'Cisco\Cisco AnyConnect Secure Mobility Client\vpnui.exe')
     }
-    foreach ($path in $candidates) {
-        if ($path -and (Test-Path $path)) { return $path }
-    }
+    foreach ($path in $candidates) { if ($path -and (Test-Path $path)) { return $path } }
     $cmd = Get-Command vpnui.exe -ErrorAction SilentlyContinue
     if ($cmd) { return $cmd.Source }
     return $null
 }
 
 function Open-UtorVpn {
-    Write-Host "`nUTORvpn" -ForegroundColor Blue
     $client = Get-VpnClientPath
     if ($client) {
         Start-Process $client | Out-Null
-        Write-Host 'Opened Cisco Secure Client.' -ForegroundColor Green
-        Write-Host "Server: $VpnServer" -ForegroundColor Blue
-        Write-Host 'Group:  UofT Default'
-        Write-Host 'Sign in with your UTORid and password, then return here.'
-    } else {
-        Write-Host 'Cisco Secure Client is not installed yet.'
-        Write-Host 'Opening the official U of T install/connect guide...'
-        [void](Open-VpnGuide)
-        Write-Host "`nAfter installing Cisco Secure Client, connect to:"
-        Write-Host "  $VpnServer" -ForegroundColor Blue
+        Write-Host "Opened Cisco Secure Client. Connect to $VpnServer." -ForegroundColor Green
+        return $true
     }
+    [void](Open-Url $VpnDownload)
+    Write-Host 'Cisco Secure Client is not installed.' -ForegroundColor Yellow
+    Write-Host 'Opened the official U of T download page. Install the VPN module, then run `utm` again.'
+    return $false
 }
 
 function Get-NetworkState {
-    $output = & ssh.exe -o BatchMode=yes -o ConnectTimeout=6 -o ConnectionAttempts=1 $SshAlias true 2>&1
+    $output = & ssh.exe -o BatchMode=yes -o ConnectTimeout=5 -o ConnectionAttempts=1 $SshAlias true 2>&1
     $code = $LASTEXITCODE
     $text = ($output | Out-String)
-
     if ($code -eq 0) { return @{ State='reachable'; Output=$text } }
     if ($text -match 'Permission denied|Host key verification failed|REMOTE HOST IDENTIFICATION HAS CHANGED|authenticity of host') {
         return @{ State='reachable'; Output=$text }
@@ -112,82 +96,58 @@ function Get-NetworkState {
     return @{ State='unknown'; Output=$text }
 }
 
-function Show-NetworkMessage {
-    Write-Host "`nUTM is not reachable from this network." -ForegroundColor Yellow
-    Write-Host @"
-
-This is normal if you're at home, off campus, in residence on a non-U of T
-network, or on public Wi-Fi. UTM lab computers normally require either:
-
-  • the U of T campus network, or
-  • UTORvpn
-
-This usually is not a password problem.
-UTORvpn server: $VpnServer
-"@
-}
-
 function Wait-ForNetwork {
-    while ($true) {
-        $probe = Get-NetworkState
-        if ($probe.State -eq 'reachable' -or $probe.State -eq 'unknown') { return $true }
+    $probe = Get-NetworkState
+    if ($probe.State -ne 'network') { return $true }
 
-        Show-NetworkMessage
-        Write-Host 'Press Enter to open/setup UTORvpn, or choose:'
-        Write-Host '  [g] official U of T VPN guide'
-        Write-Host '  [r] retry'
-        Write-Host '  [q] quit'
-        $answer = Read-Host 'Choice [Enter]'
-        switch -Regex ($answer) {
-            '^$|^[Vv]$' {
-                Open-UtorVpn
-                $again = Read-Host 'Connect to UTORvpn, then press Enter to retry (q to quit)'
-                if ($again -match '^[Qq]$') { return $false }
-            }
-            '^[Gg]$' {
-                [void](Open-VpnGuide)
-                $again = Read-Host 'Connect to UTORvpn, then press Enter to retry (q to quit)'
-                if ($again -match '^[Qq]$') { return $false }
-            }
-            '^[Rr]$' { }
-            '^[Qq]$' { return $false }
-            default { Write-Host 'Unknown choice.' }
-        }
+    Write-Host "`nUTORvpn required off campus." -ForegroundColor Yellow
+    $client = Get-VpnClientPath
+    if (-not $client) {
+        [void](Open-Url $VpnDownload)
+        Write-Host 'Cisco Secure Client is not installed. The official U of T download page was opened.'
+        Write-Host 'Install the VPN module, then run `utm` again.'
+        return $false
     }
+
+    Start-Process $client | Out-Null
+    Write-Host "Cisco Secure Client opened. Connect to $VpnServer."
+    $spin = @('|','/','-','\')
+    for ($i = 0; $i -lt 90; $i++) {
+        $probe = Get-NetworkState
+        if ($probe.State -ne 'network') {
+            Write-Host "`r✓ UTORvpn connected.          " -ForegroundColor Green
+            return $true
+        }
+        Write-Host -NoNewline "`rWaiting for UTORvpn... $($spin[$i % 4])"
+        Start-Sleep -Seconds 2
+    }
+    Write-Host "`rStill offline.                 " -ForegroundColor Yellow
+    return $false
 }
 
 function Show-Status {
     $hostName = Get-SshValue 'hostname'
     $userName = Get-SshValue 'user'
-    Write-Host "`nutm-shell $Version" -ForegroundColor Blue
-    Write-Host "User: $userName"
-    Write-Host "Host: $hostName"
-    if (Get-VpnClientPath) { Write-Host 'Cisco Secure Client: installed' }
-    else { Write-Host 'Cisco Secure Client: not detected' }
-    Write-Host -NoNewline 'Checking UTM network... '
     $probe = Get-NetworkState
+    Write-Host -NoNewline "$userName@$hostName — "
     switch ($probe.State) {
-        'reachable' { Write-Host 'reachable' -ForegroundColor Green }
-        'network' { Write-Host 'not reachable - use `utm vpn` off campus' -ForegroundColor Yellow }
+        'reachable' { Write-Host 'ready' -ForegroundColor Green }
+        'network' { Write-Host 'UTORvpn needed' -ForegroundColor Yellow }
         default {
-            Write-Host 'uncertain' -ForegroundColor Yellow
+            Write-Host 'check failed' -ForegroundColor Yellow
             if ($probe.Output) { Write-Host $probe.Output.Trim() -ForegroundColor DarkGray }
         }
     }
 }
 
 function Set-LabHost([string]$NewHost) {
-    if ([string]::IsNullOrWhiteSpace($NewHost)) {
-        Write-Host (Get-SshValue 'hostname')
-        return
-    }
-    if ($NewHost -notmatch '^[A-Za-z0-9.-]+$') { throw 'Invalid lab hostname.' }
+    if ([string]::IsNullOrWhiteSpace($NewHost)) { Write-Host (Get-SshValue 'hostname'); return }
+    if ($NewHost -notmatch '^[A-Za-z0-9.-]+$') { throw 'Invalid host.' }
     if ($NewHost -notmatch '\.') { $NewHost = "$NewHost.utm.utoronto.ca" }
 
     $config = Join-Path (Join-Path $HOME '.ssh') 'config'
-    if (-not (Test-Path $config)) { throw 'SSH config not found. Run setup again.' }
-    $text = [IO.File]::ReadAllText($config)
-    $lines = $text -split "`r?`n"
+    if (-not (Test-Path $config)) { throw 'Run setup again.' }
+    $lines = [IO.File]::ReadAllText($config) -split "`r?`n"
     $inside = $false
     $updated = foreach ($line in $lines) {
         if ($line -eq '# >>> utm-shell >>>') { $inside = $true; $line; continue }
@@ -203,22 +163,14 @@ function Set-LabHost([string]$NewHost) {
             $state | ConvertTo-Json | Set-Content -Path $StateFile -Encoding UTF8
         } catch { }
     }
-    Write-Host "Switched UTM host to: $NewHost" -ForegroundColor Green
+    Write-Host $NewHost -ForegroundColor Green
 }
 
 function Show-Files {
 @"
-
-Copy files from your own computer:
-
-  computer -> UTM
-    scp FILE ${SshAlias}:~/
-
-  UTM -> computer
-    scp ${SshAlias}:~/FILE .
-
-  whole folder -> UTM
-    scp -r FOLDER ${SshAlias}:~/
+scp FILE ${SshAlias}:~/            # computer -> UTM
+scp ${SshAlias}:~/FILE .            # UTM -> computer
+scp -r FOLDER ${SshAlias}:~/        # folder -> UTM
 "@ | Write-Host
 }
 
@@ -230,7 +182,7 @@ function Run-Doctor {
 }
 
 function Run-Update {
-    if (-not (Test-Path $StateFile)) { throw 'Saved setup information is missing. Run the README setup command again.' }
+    if (-not (Test-Path $StateFile)) { throw 'Run setup again.' }
     $state = Get-Content $StateFile -Raw | ConvertFrom-Json
     $path = Join-Path $env:TEMP 'utm-shell-setup.ps1'
     Invoke-WebRequest "$RawBase/setup.ps1" -OutFile $path -UseBasicParsing
@@ -257,9 +209,9 @@ switch ($Command) {
     '--help' { Show-Usage; exit 0 }
     '-h' { Show-Usage; exit 0 }
     'status' { Show-Status; exit 0 }
-    'vpn' { Open-UtorVpn; exit 0 }
-    '--vpn' { Open-UtorVpn; exit 0 }
-    'guide' { [void](Open-VpnGuide); exit 0 }
+    'vpn' { if (Open-UtorVpn) { exit 0 } else { exit 2 } }
+    '--vpn' { if (Open-UtorVpn) { exit 0 } else { exit 2 } }
+    'guide' { [void](Open-Url $VpnGuide); exit 0 }
     'host' { Set-LabHost $Value; exit 0 }
     'files' { Show-Files; exit 0 }
     'doctor' { Run-Doctor; exit $LASTEXITCODE }
@@ -269,11 +221,7 @@ switch ($Command) {
     '--raw' { & ssh.exe $SshAlias; exit $LASTEXITCODE }
     '' { }
     $null { }
-    default {
-        Write-Error "Unknown command: $Command"
-        Show-Usage
-        exit 2
-    }
+    default { Write-Error 'Unknown command. Try `utm help`.'; exit 2 }
 }
 
 if (-not (Wait-ForNetwork)) { exit 2 }
