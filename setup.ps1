@@ -11,7 +11,7 @@ param(
 
 Set-StrictMode -Version 2.0
 $ErrorActionPreference = 'Stop'
-$Version = '1.5.0'
+$Version = '1.6.0'
 $RawBase = 'https://raw.githubusercontent.com/andrewmuratov/utm-shell/main'
 $DefaultHost = 'dh2026pc08'
 $Start = '# >>> utm-shell >>>'
@@ -205,7 +205,7 @@ if (-not $SkipKeyCopy) {
     if (-not (Test-Key)) {
         & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ConnectPath -EnsureNetwork
         if ($LASTEXITCODE -ne 0) {
-            Write-Host 'Setup saved. Install/connect UTORvpn, then paste the same setup command again.' -ForegroundColor Yellow
+            Write-Host 'Setup saved. Connect UTORvpn, then run this setup command again.' -ForegroundColor Yellow
             exit 2
         }
 
