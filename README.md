@@ -3,7 +3,7 @@
 
 # utm-shell
 
-**Set up UTM lab access once. After that, just type `utm`.**
+**One setup command. Then just type `utm`.**
 
 [![Validate](https://github.com/andrewmuratov/utm-shell/actions/workflows/validate.yml/badge.svg)](https://github.com/andrewmuratov/utm-shell/actions/workflows/validate.yml)
 [![MIT License](https://img.shields.io/badge/license-MIT-2f81f7.svg)](LICENSE)
@@ -14,17 +14,19 @@ Windows · macOS · Linux · WSL · ChromeOS Linux
 
 ---
 
-## Setup
+## Install
 
 You need only:
 
-1. your **UTORid**
-2. a real UTM lab computer name, such as `dh2026pc08`
-3. an internet connection
+- your **UTORid**
+- one real UTM lab computer name, such as `dh2026pc08`
+- an internet connection
+
+No GitHub account or clone is required.
 
 ### macOS / Linux / WSL / ChromeOS Linux
 
-Paste this into a terminal:
+Paste this once into a terminal:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/setup.sh | bash
@@ -32,154 +34,210 @@ curl -fsSL https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/setup.
 
 ### Windows 10 / 11
 
-Paste this into **PowerShell**:
+Paste this once into **PowerShell** or **Windows Terminal → PowerShell**:
 
 ```powershell
 irm https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/setup.ps1 | iex
 ```
 
-The setup asks for your UTORid and lab computer. If you are off campus, it explains that the UTM lab network is not reachable directly and offers to open **UTORvpn** setup for you.
+Setup asks for your UTORid and lab computer. Your UTORid password may be requested **once** while SSH installs your public key.
 
-Your UTORid password may be requested once while your public SSH key is installed. It is handled directly by SSH and is never stored by this project.
+If you run setup from home or another off-campus network, that is fine: the installer detects that UTM is unreachable directly, explains why, and offers to open/setup **UTORvpn** before continuing.
 
-After setup, open a new terminal and run:
+After setup, your normal workflow is simply:
 
 ```text
 utm
 ```
 
-On campus, it connects immediately. Off campus, `utm` checks the connection first and gives you a useful VPN prompt instead of leaving you staring at a hanging SSH command.
-
-## Off campus? `utm` handles it
-
-UTM lab computers are normally reachable only from the U of T network. At home, on public Wi-Fi, or on another off-campus network, connect to **UTORvpn** first.
-
-If `utm` cannot reach the lab network, it shows:
+## The commands you actually need
 
 ```text
-Can't reach the UTM lab computer.
-
-UTM lab machines are normally reachable only from the U of T network.
-If you're off campus, connect to UTORvpn first.
-
-  [1] Open Cisco Secure Client / UTORvpn setup
-  [2] Open the official U of T VPN guide
-  [r] Retry
-  [q] Quit
+utm                 connect to the lab
+utm status          check host + network/VPN readiness
+utm vpn             open/setup UTORvpn
+utm host             show the current lab computer
+utm host dh2026pc08  switch lab computers
+utm files           show copy-file examples
+utm doctor          diagnose a problem
+utm update          update/repair utm-shell
+utm help            show everything
 ```
 
-You can also open VPN help at any time:
+Raw OpenSSH still works as `ssh utm` if you specifically want it.
+
+## Home Wi-Fi / off campus
+
+UTM lab computers normally require either the **U of T campus network** or **UTORvpn**. If you type `utm` at home, on public Wi-Fi, or on another off-campus network, utm-shell performs a short reachability check first.
+
+Instead of leaving you staring at an SSH timeout, it explains:
+
+```text
+UTM is not reachable from this network.
+
+This is normal if you're at home or off campus.
+UTM lab computers normally require either:
+  • the U of T campus network, or
+  • UTORvpn
+
+This usually is not a password problem.
+
+Press Enter to open/setup UTORvpn.
+```
+
+Then it either opens **Cisco Secure Client** if it is already installed, or opens U of T's official VPN setup guide if it is not. Connect the VPN, return to the terminal, press Enter, and utm-shell retries automatically.
+
+At any time:
 
 ```text
 utm vpn
 ```
 
-If Cisco Secure Client is already installed, `utm vpn` opens it. Otherwise it opens U of T's official UTORvpn setup guide.
-
-The VPN address is:
+Current U of T general VPN details:
 
 ```text
-general.vpn.utoronto.ca
+Server: general.vpn.utoronto.ca
+Group:  UofT Default
 ```
 
-Official U of T guide: https://security.utoronto.ca/services/vpn/usage-guide/
+Official U of T VPN guide: https://security.utoronto.ca/services/vpn/usage-guide/
 
-> `utm-shell` does not download or replace U of T's VPN client. It launches the installed Cisco client when possible, otherwise it sends you to the official University setup page.
+See the short [UTORvpn guide](docs/utorvpn.md) for Windows, macOS, Linux, and WSL.
+
+> utm-shell does not redistribute Cisco software or silently request administrator access. If Cisco Secure Client is missing, it opens U of T's current official installation instructions.
 
 ## What success looks like
 
-After connecting:
-
 ```text
+$ utm
+
 UTM yourutorid@dh2026pc08 ~
 ❯
 ```
 
-You are now running commands on the UTM lab computer.
-
-## What setup does
-
-- creates the SSH shortcut `ssh utm`
-- installs the smarter local command `utm`
-- detects the common off-campus / no-VPN situation before login
-- launches Cisco Secure Client when it is installed
-- opens the official UTORvpn guide when the client is missing
-- makes raw SSH fail quickly instead of hanging for a long time
-- creates a dedicated UTM SSH key automatically
-- enables passwordless login
-- keeps SSH host verification enabled
-- installs a clean remote Bash prompt
-- fixes incompatible modern terminal types automatically
-- hides the large Ubuntu login banner
-- adds a few useful lab commands
-- can be rerun safely to repair or update an existing setup
-
-It does **not** require sudo on UTM, install a shell framework, upload your private key, disable host verification, or replace unrelated dotfiles.
-
-## Commands on your computer
-
-| Command | What it does |
-|---|---|
-| `utm` | check network/VPN and connect to UTM |
-| `utm vpn` | open Cisco Secure Client or the official VPN guide |
-| `utm raw` | skip the pre-check and run raw SSH |
-| `ssh utm` | normal OpenSSH connection using the configured alias |
-| `scp FILE utm:~/` | copy a file to your UTM home directory |
-| `scp utm:~/FILE .` | copy a file back to your computer |
+At that point commands run on the UTM lab computer until you type `exit` or `bye`.
 
 ## Useful commands inside UTM
 
-| Command | What it does |
-|---|---|
-| `ll` | detailed listing including hidden files |
-| `la` | hidden files |
-| `..`, `...`, `....` | move up directories |
-| `c`, `cls` | fully clear the screen and scrollback |
-| `bye` | leave the SSH session |
-| `reload` | reload the shell setup |
-| `mkcd DIR` | create a directory and enter it |
-| `ff NAME` | find files/directories below `.` |
-| `disk` | filesystem disk usage |
-| `usage` | sizes of everything here, including hidden files |
-| `path` | print `$PATH` one entry per line |
-| `py` | run `python3` |
-| `gs`, `gd`, `gl` | friendly Git status/diff/log shortcuts |
-| `utm-version` | show installed utm-shell version |
-| `utm-help` | show the command reference |
+```text
+ll              detailed listing including hidden files
+la              list hidden files
+.. / ...        move up directories
+c / cls         clear the screen and scrollback
+bye             leave the SSH session
+reload          reload the remote shell setup
+mkcd DIR        create a directory and enter it
+ff NAME         find files/directories below the current directory
+disk            filesystem disk usage
+usage           sizes of everything here, including hidden files
+path            print PATH one entry per line
+py              python3
+gs / gd / gl    friendly Git status / diff / log shortcuts
+utm-version     show the installed remote version
+utm-help        show the remote command reference
+```
 
 Type the beginning of an old command and press **↑/↓** to search matching history.
 
-## First-time UTORvpn setup
+## Copying lab files
 
-U of T currently uses **Cisco Secure Client** for UTORvpn. Install the VPN module using the University's official instructions, open Cisco Secure Client, connect to:
+You do not need to remember SCP syntax. On your own computer, run:
 
 ```text
-general.vpn.utoronto.ca
+utm files
 ```
 
-and sign in with your UTORid and password. Once connected, run `utm` again.
-
-See: **https://security.utoronto.ca/services/vpn/usage-guide/**
-
-## If login says `Permission denied`
-
-If the lab computer is reachable but a known-correct password is rejected, the issue can be account provisioning on the lab system rather than your computer. Contact course staff or the lab/system administrator with your **UTORid and hostname**. Never send anyone your password or private SSH key.
-
-See [Login problems](docs/login-problems.md).
-
-## Diagnostics
-
-macOS / Linux / WSL / ChromeOS Linux:
+The basic forms are:
 
 ```bash
-./doctor.sh
+# computer → UTM
+scp exercise.py utm:~/
+
+# UTM → computer
+scp utm:~/exercise.py .
+
+# entire folder → UTM
+scp -r lab01 utm:~/
 ```
 
-Windows PowerShell:
+## Switching lab computers
 
-```powershell
-.\doctor.ps1
+You can change the configured machine without editing SSH files:
+
+```text
+utm host dh2026pc09
 ```
+
+Check it with:
+
+```text
+utm status
+```
+
+## If something breaks
+
+Start with:
+
+```text
+utm status
+utm doctor
+```
+
+Then:
+
+```text
+utm update
+```
+
+`utm update` reruns the current installer using your saved UTORid, host, and SSH key, so upgrades and repairs normally need no setup questions.
+
+If UTM is reachable but a known-correct password is rejected, the problem can be lab-system UTORid provisioning rather than your computer. See [Login problems](docs/login-problems.md). Never send anyone your password or private SSH key.
+
+## What setup changes
+
+### On your computer
+
+- creates a managed `Host utm` OpenSSH entry
+- creates/reuses a dedicated Ed25519 key for UTM
+- enables passwordless SSH after the one-time password step
+- installs the local `utm` helper command
+- adds `~/.local/bin` to your normal shell path where needed
+- keeps SSH host verification enabled
+- sets short connection timeouts so unreachable lab machines fail quickly
+
+### On the UTM account
+
+- installs a small, marked Bash configuration block
+- adds the blue `UTM` prompt and useful commands above
+- fixes unsupported modern terminal types when necessary
+- improves command history
+- hides the long Ubuntu login banner by default
+
+It does **not** install a shell framework, require sudo on UTM, replace unrelated dotfiles, upload your private key, disable host verification, or run a background service.
+
+## Platform support
+
+| Computer | Setup | Daily command | UTORvpn help |
+|---|---|---|---|
+| Windows 10/11 | PowerShell one-liner | `utm` | launches Cisco or official guide |
+| macOS | terminal one-liner | `utm` | launches Cisco or official guide |
+| Linux | terminal one-liner | `utm` | launches Cisco or official guide |
+| WSL | terminal one-liner | `utm` | use Cisco on the Windows host |
+| ChromeOS Linux | terminal one-liner | `utm` | environment-dependent; official guide provided |
+
+More detail: [Getting Started](GETTING_STARTED.md) · [UTORvpn](docs/utorvpn.md) · [Platforms](docs/platforms.md) · [Troubleshooting](docs/troubleshooting.md)
+
+## Security
+
+- only your **public** SSH key is copied to UTM
+- private keys remain on your computer
+- UTORid passwords are handled directly by OpenSSH / Cisco Secure Client
+- SSH host verification remains enabled
+- no analytics or telemetry
+- no password storage
+- no automatic Cisco redistribution
+
+See [SECURITY.md](SECURITY.md).
 
 ## Uninstall
 
@@ -195,28 +253,9 @@ Windows PowerShell:
 $u="$env:TEMP\utm-shell-uninstall.ps1"; irm https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/uninstall.ps1 -OutFile $u; & $u
 ```
 
-## Security
-
-- only your **public** SSH key is copied to UTM
-- private keys never leave your computer
-- SSH host verification remains enabled
-- UTORid passwords are handled directly by OpenSSH / Cisco Secure Client
-- no analytics, telemetry, daemon, or background service
-- the project links to the official U of T VPN installer instructions instead of redistributing Cisco software
-
-See [SECURITY.md](SECURITY.md).
-
-## More help
-
-- [Getting Started](GETTING_STARTED.md)
-- [Login problems](docs/login-problems.md)
-- [Platform guide](docs/platforms.md)
-- [Troubleshooting](docs/troubleshooting.md)
-- [Support](SUPPORT.md)
-
 ## Scope
 
-This is a personal convenience project for University of Toronto Mississauga lab access. It is **not affiliated with, endorsed by, or maintained by the University of Toronto**. Official course and U of T IT instructions take precedence.
+This is an independent convenience project for University of Toronto Mississauga lab access. It is **not affiliated with, endorsed by, or maintained by the University of Toronto**. Official course and U of T IT instructions take precedence.
 
 ## License
 
