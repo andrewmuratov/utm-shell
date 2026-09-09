@@ -13,13 +13,15 @@ $SshDir = Join-Path $HOME '.ssh'
 $SshConfig = Join-Path $SshDir 'config'
 $StateDir = Join-Path (Join-Path $HOME '.config') 'utm-shell'
 $StateFile = Join-Path $StateDir 'config.json'
+$BinDir = Join-Path (Join-Path $HOME '.local') 'bin'
+$UtmCmd = Join-Path $BinDir 'utm.cmd'
 
 if ($Help) {
 @'
 Usage: .\uninstall.ps1 [options]
 
 Options:
-  -LocalOnly       Remove only the local SSH configuration
+  -LocalOnly       Remove only the local setup
   -KeepAuthKey     Leave the public key in ~/.ssh/authorized_keys on UTM
   -Help            Show this help
 '@ | Write-Host
@@ -114,10 +116,9 @@ if (Test-Path $SshConfig) {
 }
 Write-Host '✓ Local SSH config cleaned.' -ForegroundColor Green
 
-Remove-Item -Force -ErrorAction SilentlyContinue $StateFile
-if (Test-Path $StateDir) {
-    try { Remove-Item $StateDir -ErrorAction Stop } catch { }
-}
+Remove-Item -Force -ErrorAction SilentlyContinue $UtmCmd
+Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $StateDir
+Write-Host '✓ Smart utm command removed.' -ForegroundColor Green
 
 if ($KeyCreated -and $KeyPath -and (Test-Path $KeyPath)) {
     Write-Host "`nA dedicated private key created by utm-shell remains at:`n  $KeyPath"
