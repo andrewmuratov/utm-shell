@@ -273,6 +273,10 @@ if [[ $- == *i* ]]; then
   alias reload='source ~/.bashrc'
   alias disk='df -h'
 
+  # Older/manual versions may have defined these names as aliases. Remove
+  # those aliases before installing the richer function versions below.
+  unalias usage py gs gd gl utm-help utm-version 2>/dev/null || true
+
   usage() {
     local -a items=()
     local item
