@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-VERSION="1.1.0"
+VERSION="1.1.1"
 SSH_ALIAS="utm"
 UTORID=""
 UTM_HOST=""
@@ -272,11 +272,44 @@ if [[ $- == *i* ]]; then
   alias cls='clear'
   alias reload='source ~/.bashrc'
   alias disk='df -h'
-  alias usage='du -sh -- * 2>/dev/null | sort -h'
-  alias py='python3'
-  alias gs='git status'
-  alias gd='git diff'
-  alias gl='git log --oneline --graph --decorate -15'
+
+  usage() {
+    local -a items=()
+    local item
+    while IFS= read -r -d '' item; do
+      items+=("$item")
+    done < <(find . -mindepth 1 -maxdepth 1 -print0 2>/dev/null)
+
+    if ((${#items[@]} == 0)); then
+      printf 'No files in %s\n' "$PWD"
+      return 0
+    fi
+
+    du -sh -- "${items[@]}" 2>/dev/null | sort -h
+  }
+
+  py() {
+    if ! command -v python3 >/dev/null 2>&1; then
+      printf 'python3 is not available on this lab machine.\n' >&2
+      return 127
+    fi
+    python3 "$@"
+  }
+
+  _utm_git_need_repo() {
+    if ! command -v git >/dev/null 2>&1; then
+      printf 'git is not available on this lab machine.\n' >&2
+      return 127
+    fi
+    if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+      printf 'Not in a Git repository: %s\n' "$PWD" >&2
+      return 1
+    fi
+  }
+
+  gs() { _utm_git_need_repo || return; git status "$@"; }
+  gd() { _utm_git_need_repo || return; git diff "$@"; }
+  gl() { _utm_git_need_repo || return; git log --oneline --graph --decorate -15 "$@"; }
 
   mkcd() {
     [[ $# -eq 1 ]] || { printf 'usage: mkcd <directory>\n' >&2; return 2; }
@@ -289,6 +322,7 @@ if [[ $- == *i* ]]; then
   }
 
   path() { printf '%s\n' "$PATH" | tr ':' '\n'; }
+  utm-version() { printf 'utm-shell 1.1.1\n'; }
 
   utm-help() {
     cat <<'HELP_EOF'
@@ -301,10 +335,11 @@ utm-shell commands
   mkcd DIR      create a directory and enter it
   ff NAME       find files/directories by name below .
   disk          filesystem disk usage
-  usage         sizes of items in the current directory
+  usage         sizes of all items here, including hidden files
   path          print PATH one entry per line
-  py            python3
-  gs / gd / gl  compact Git shortcuts
+  py [ARGS]     run python3
+  gs / gd / gl  friendly Git status / diff / log shortcuts
+  utm-version   show the installed utm-shell version
   utm-help      show this help
 HELP_EOF
   }
@@ -349,7 +384,7 @@ if [[ "$USE_HUSHLOGIN" == "1" && ! -e "$HOME/.hushlogin" ]]; then
 fi
 
 {
-  printf 'VERSION=%q\n' '1.1.0'
+  printf 'VERSION=%q\n' '1.1.1'
   printf 'LOGIN_FILE=%q\n' "$LOGIN_FILE"
   printf 'LOGIN_MANAGED=%q\n' "$LOGIN_MANAGED"
   printf 'HUSH_CREATED=%q\n' "$HUSH_CREATED"
