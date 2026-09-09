@@ -37,7 +37,9 @@ jobs:
           bash install.sh --help >/dev/null
           bash uninstall.sh --help >/dev/null
           bash doctor.sh --help >/dev/null
-          grep -q 'uoft.me/cisco-vpn-download' connect.sh
+          grep -q 'security.utoronto.ca/services/vpn/usage-guide' connect.sh
+          grep -q 'Waiting for Cisco Secure Client' connect.sh
+          grep -q 'general.vpn.utoronto.ca' connect.sh
           grep -q "DEFAULT_HOST='dh2026pc08'" setup.sh
 
       - name: Test remote shell in a clean temporary HOME
@@ -83,5 +85,8 @@ jobs:
           .\install.ps1 -Help | Out-Null
           .\uninstall.ps1 -Help | Out-Null
           .\doctor.ps1 -Help | Out-Null
-          if ((Get-Content .\connect.ps1 -Raw) -notmatch 'uoft.me/cisco-vpn-download') { throw 'VPN download shortcut missing' }
+          $connect = Get-Content .\connect.ps1 -Raw
+          if ($connect -notmatch 'security.utoronto.ca/services/vpn/usage-guide') { throw 'Official VPN guide missing' }
+          if ($connect -notmatch 'Waiting for Cisco Secure Client') { throw 'Automatic Cisco wait flow missing' }
+          if ($connect -notmatch 'general.vpn.utoronto.ca') { throw 'VPN server missing' }
           if ((Get-Content .\setup.ps1 -Raw) -notmatch "DefaultHost = 'dh2026pc08'") { throw 'Default host missing' }
