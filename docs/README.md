@@ -1,7 +1,10 @@
 # Documentation
 
-Use the main [README](../README.md) for the normal install path. These pages cover platform-specific details and troubleshooting.
+Use the main [README](../README.md) for the normal install path.
 
+If you are new to SSH, start with **[Getting Started](../GETTING_STARTED.md)**. It assumes no prior terminal knowledge.
+
+- [Login problems](login-problems.md) — `Permission denied`, account provisioning, key login, and host-key errors
 - [Platform support](platforms.md) — Windows, macOS, Linux, WSL, ChromeOS Linux, BSD/Unix, X11, SCP, and host-key behavior
 - [Windows quick reference](windows.md) — native PowerShell setup and file transfer
 - [macOS / Linux / WSL quick reference](macos-linux.md) — Bash setup and common commands
