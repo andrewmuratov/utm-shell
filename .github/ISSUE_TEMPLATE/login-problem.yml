@@ -1,0 +1,70 @@
+name: Login problem
+description: Report an SSH/login setup problem without exposing credentials
+title: "[login] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem. **Do not post your password, private SSH key, access token, or other credentials.**
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Local platform
+      options:
+        - Windows 10/11 PowerShell
+        - macOS
+        - Linux
+        - WSL
+        - ChromeOS Linux
+        - Git Bash / MSYS2 / Cygwin
+        - BSD / other Unix
+    validations:
+      required: true
+
+  - type: input
+    id: host
+    attributes:
+      label: Lab hostname
+      description: Example: dh2026pc08. Do not include your password or private key.
+      placeholder: dh2026pc08
+    validations:
+      required: true
+
+  - type: dropdown
+    id: network
+    attributes:
+      label: Network
+      options:
+        - Campus network
+        - UTORvpn
+        - Neither / not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: error
+    attributes:
+      label: Exact error
+      description: Paste the error text after removing any sensitive information.
+      render: text
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Basic checks
+      options:
+        - label: I used a real hostname, not a placeholder such as dh20XYpcNM.
+        - label: I have not included my password, private key, or tokens in this issue.
+        - label: I checked the Login problems guide.
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Optional context, including whether the same UTORid works for other U of T services. Do not post the UTORid itself if you prefer not to make it public.
