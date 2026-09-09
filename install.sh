@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-VERSION="1.0.0"
+VERSION="1.1.0"
 SSH_ALIAS="utm"
 UTORID=""
 UTM_HOST=""
@@ -27,7 +27,7 @@ die()  { printf '%s✗%s %s\n' "$RED" "$RESET" "$*" >&2; exit 1; }
 
 usage() {
   cat <<'USAGE'
-utm-shell — minimal SSH + Bash setup for UTM lab machines
+utm-shell — cross-platform SSH + Bash setup for UTM lab machines
 
 Usage:
   ./install.sh [options]
@@ -40,6 +40,11 @@ Options:
   --skip-key-copy     Do not install the public key on the UTM account
   --no-hushlogin      Keep the Ubuntu login banner
   -h, --help          Show this help
+
+Supported local environments:
+  macOS, Linux, WSL, ChromeOS Linux, BSD/Unix with Bash + OpenSSH,
+  and Git Bash/MSYS2/Cygwin on Windows. Native Windows users should
+  normally use install.ps1 instead.
 USAGE
 }
 
@@ -60,6 +65,12 @@ for cmd in ssh ssh-keygen awk mktemp base64 tr; do
   command -v "$cmd" >/dev/null 2>&1 || die "Required command not found: $cmd"
 done
 
+LOCAL_OS="$(uname -s 2>/dev/null || printf unknown)"
+WINDOWS_BASH=0
+case "$LOCAL_OS" in
+  MINGW*|MSYS*|CYGWIN*) WINDOWS_BASH=1 ;;
+esac
+
 read_tty() {
   local __var="$1" __prompt="$2" __default="${3:-}" __value=""
   [[ -r /dev/tty ]] || die "Interactive input requires a TTY. Pass --user and --host explicitly."
@@ -74,8 +85,7 @@ read_tty() {
 }
 
 confirm() {
-  local prompt="$1" default="${2:-y}" answer=""
-  local suffix='[Y/n]'
+  local prompt="$1" default="${2:-y}" answer="" suffix='[Y/n]'
   [[ "$default" == "n" ]] && suffix='[y/N]'
   printf '%s %s ' "$prompt" "$suffix" >/dev/tty
   IFS= read -r answer </dev/tty || return 1
@@ -84,7 +94,12 @@ confirm() {
 }
 
 printf '\n%sutm-shell%s %s%s%s\n' "$BLUE" "$RESET" "$DIM" "$VERSION" "$RESET"
+printf '%sLocal platform: %s%s\n' "$DIM" "$LOCAL_OS" "$RESET"
 printf '%sA small, reversible setup for UTM lab SSH.%s\n\n' "$DIM" "$RESET"
+
+if [[ "$WINDOWS_BASH" -eq 1 ]]; then
+  warn "Windows Bash detected. This path is supported, but native PowerShell users should prefer install.ps1."
+fi
 
 [[ -n "$UTORID" ]] || read_tty UTORID "UTORid"
 [[ -n "$UTM_HOST" ]] || read_tty UTM_HOST "UTM lab host (for example dh2026pc08)"
@@ -98,7 +113,7 @@ if [[ "$UTM_HOST" != *.* ]]; then
 fi
 
 mkdir -p "$HOME/.ssh"
-chmod 700 "$HOME/.ssh"
+chmod 700 "$HOME/.ssh" 2>/dev/null || true
 
 if [[ -z "$KEY_PATH" ]]; then
   if [[ -f "$HOME/.ssh/id_ed25519" && -f "$HOME/.ssh/id_ed25519.pub" ]]; then
@@ -124,17 +139,17 @@ fi
 if [[ ! -f "${KEY_PATH}.pub" ]]; then
   info "Rebuilding missing public key"
   ssh-keygen -y -f "$KEY_PATH" > "${KEY_PATH}.pub"
-  chmod 644 "${KEY_PATH}.pub"
+  chmod 644 "${KEY_PATH}.pub" 2>/dev/null || true
 fi
 
 SSH_CONFIG="$HOME/.ssh/config"
 SSH_START="# >>> utm-shell >>>"
 SSH_END="# <<< utm-shell <<<"
 touch "$SSH_CONFIG"
-chmod 600 "$SSH_CONFIG"
+chmod 600 "$SSH_CONFIG" 2>/dev/null || true
 
 tmp="$(mktemp)"
-trap 'rm -f "$tmp"' EXIT
+trap 'rm -f "$tmp" "${tmp}.clean" 2>/dev/null || true' EXIT
 awk -v start="$SSH_START" -v end="$SSH_END" '
   $0 == start { skip=1; next }
   $0 == end   { skip=0; next }
@@ -151,28 +166,31 @@ $SSH_START
 Host $SSH_ALIAS
     HostName $UTM_HOST
     User $UTORID
-    IdentityFile $KEY_PATH
+    IdentityFile "$KEY_PATH"
     IdentitiesOnly yes
     ServerAliveInterval 60
     ServerAliveCountMax 3
+EOF_CONFIG
+  if [[ "$WINDOWS_BASH" -eq 0 ]]; then
+    cat <<'EOF_CONFIG'
     ControlMaster auto
     ControlPath ~/.ssh/control-%C
     ControlPersist 30m
-$SSH_END
 EOF_CONFIG
+  fi
+  printf '%s\n' "$SSH_END"
 } > "$SSH_CONFIG"
-chmod 600 "$SSH_CONFIG"
+chmod 600 "$SSH_CONFIG" 2>/dev/null || true
 ok "Configured ssh $SSH_ALIAS → $UTORID@$UTM_HOST"
 
 ssh -G "$SSH_ALIAS" >/dev/null 2>&1 || die "OpenSSH rejected the generated SSH configuration"
 
 key_auth_works() {
-  ssh \
-    -o ControlMaster=no \
-    -o ControlPath=none \
-    -o BatchMode=yes \
-    -o ConnectTimeout=8 \
-    "$SSH_ALIAS" true >/dev/null 2>&1
+  if [[ "$WINDOWS_BASH" -eq 0 ]]; then
+    ssh -o ControlMaster=no -o ControlPath=none -o BatchMode=yes -o ConnectTimeout=8 "$SSH_ALIAS" true >/dev/null 2>&1
+  else
+    ssh -o BatchMode=yes -o ConnectTimeout=8 "$SSH_ALIAS" true >/dev/null 2>&1
+  fi
 }
 
 if [[ "$SKIP_KEY_COPY" -eq 0 ]]; then
@@ -184,7 +202,7 @@ if [[ "$SKIP_KEY_COPY" -eq 0 ]]; then
     if command -v ssh-copy-id >/dev/null 2>&1; then
       ssh-copy-id -i "${KEY_PATH}.pub" "$SSH_ALIAS" || die "Could not copy the SSH key. Check the hostname, network/VPN, and your UTORid password."
     else
-      PUB_B64="$(base64 < "${KEY_PATH}.pub" | tr -d '\n')"
+      PUB_B64="$(base64 < "${KEY_PATH}.pub" | tr -d '\r\n')"
       ssh "$SSH_ALIAS" "umask 077; mkdir -p ~/.ssh; touch ~/.ssh/authorized_keys; pub=\$(printf '%s' '$PUB_B64' | base64 -d); grep -qxF \"\$pub\" ~/.ssh/authorized_keys || printf '%s\\n' \"\$pub\" >> ~/.ssh/authorized_keys" \
         || die "Could not install the SSH key. Check the hostname, network/VPN, and your UTORid password."
     fi
@@ -228,7 +246,10 @@ cat >> "$BASHRC" <<'BASHRC_EOF'
 
 # >>> utm-shell >>>
 if [[ $- == *i* ]]; then
-  if [[ ${TERM:-} == "xterm-ghostty" ]]; then
+  # The UTM image can have an older terminfo database than a modern local
+  # terminal. Keep the local terminal untouched and fall back remotely only
+  # when UTM does not know the advertised TERM entry.
+  if [[ -n ${TERM:-} ]] && command -v infocmp >/dev/null 2>&1 && ! infocmp "$TERM" >/dev/null 2>&1; then
     export TERM=xterm-256color
   fi
 
@@ -243,19 +264,16 @@ if [[ $- == *i* ]]; then
   alias ll='ls -lah'
   alias la='ls -A'
   alias l='ls -CF'
-
   alias ..='cd ..'
   alias ...='cd ../..'
   alias ....='cd ../../..'
   alias home='cd ~'
-
   alias c='clear'
   alias cls='clear'
   alias reload='source ~/.bashrc'
   alias disk='df -h'
   alias usage='du -sh -- * 2>/dev/null | sort -h'
   alias py='python3'
-
   alias gs='git status'
   alias gd='git diff'
   alias gl='git log --oneline --graph --decorate -15'
@@ -270,9 +288,7 @@ if [[ $- == *i* ]]; then
     find . -iname "*$1*" 2>/dev/null
   }
 
-  path() {
-    printf '%s\n' "$PATH" | tr ':' '\n'
-  }
+  path() { printf '%s\n' "$PATH" | tr ':' '\n'; }
 
   utm-help() {
     cat <<'HELP_EOF'
@@ -333,7 +349,7 @@ if [[ "$USE_HUSHLOGIN" == "1" && ! -e "$HOME/.hushlogin" ]]; then
 fi
 
 {
-  printf 'VERSION=%q\n' '1.0.0'
+  printf 'VERSION=%q\n' '1.1.0'
   printf 'LOGIN_FILE=%q\n' "$LOGIN_FILE"
   printf 'LOGIN_MANAGED=%q\n' "$LOGIN_MANAGED"
   printf 'HUSH_CREATED=%q\n' "$HUSH_CREATED"
@@ -343,8 +359,7 @@ REMOTE_EOF
 )
 
 info "Installing the remote Bash setup"
-ssh "$SSH_ALIAS" bash -s -- "$USE_HUSHLOGIN" <<< "$REMOTE_INSTALL" \
-  || die "Remote shell setup failed"
+ssh "$SSH_ALIAS" bash -s -- "$USE_HUSHLOGIN" <<< "$REMOTE_INSTALL" || die "Remote shell setup failed"
 ok "Remote shell configured"
 
 STATE_DIR="$HOME/.config/utm-shell"
@@ -357,8 +372,9 @@ mkdir -p "$STATE_DIR"
   printf 'UTM_HOST=%q\n' "$UTM_HOST"
   printf 'KEY_PATH=%q\n' "$KEY_PATH"
   printf 'KEY_CREATED=%q\n' "$KEY_CREATED"
+  printf 'LOCAL_OS=%q\n' "$LOCAL_OS"
 } > "$STATE_FILE"
-chmod 600 "$STATE_FILE"
+chmod 600 "$STATE_FILE" 2>/dev/null || true
 
 printf '\n%sDone.%s Your UTM shell is ready.\n\n' "$GREEN" "$RESET"
 printf '  %sssh %s%s\n\n' "$BLUE" "$SSH_ALIAS" "$RESET"
