@@ -11,7 +11,7 @@ param(
 
 Set-StrictMode -Version 2.0
 $ErrorActionPreference = 'Stop'
-$Version = '1.3.0'
+$Version = '1.4.0'
 $RawBase = 'https://raw.githubusercontent.com/andrewmuratov/utm-shell/main'
 $Start = '# >>> utm-shell >>>'
 $End = '# <<< utm-shell <<<'
@@ -24,7 +24,8 @@ if ($Help) {
 @'
 utm-shell setup
 
-Normal use: run it and answer two questions.
+Normal use: paste the README command and answer two questions once.
+Rerunning setup repairs/updates the existing installation.
 
 Options:
   -User UTORID
@@ -37,14 +38,34 @@ Options:
     exit 0
 }
 
-Write-Host "`nutm-shell $Version" -ForegroundColor Blue
-Write-Host "Set up UTM lab access in about a minute.`n" -ForegroundColor DarkGray
-
 $ssh = Get-Command ssh.exe -ErrorAction SilentlyContinue
 $keygen = Get-Command ssh-keygen.exe -ErrorAction SilentlyContinue
 if (-not $ssh -or -not $keygen) {
-    Fail "OpenSSH Client is required. Install 'OpenSSH Client' from Windows Optional Features, then rerun this command."
+    Write-Host "OpenSSH Client is required." -ForegroundColor Yellow
+    Write-Host "Windows 10/11: Settings -> System -> Optional features -> View features -> OpenSSH Client"
+    try { Start-Process 'ms-settings:optionalfeatures' | Out-Null } catch { }
+    Fail 'Install OpenSSH Client, then paste the same setup command again.'
 }
+
+$SshDir = Join-Path $HOME '.ssh'
+$StateDir = Join-Path (Join-Path $HOME '.config') 'utm-shell'
+$BinDir = Join-Path (Join-Path $HOME '.local') 'bin'
+$StateFile = Join-Path $StateDir 'config.json'
+$SshConfig = Join-Path $SshDir 'config'
+New-Item -ItemType Directory -Force -Path $SshDir, $StateDir, $BinDir | Out-Null
+
+# Reuse saved values on updates so `utm update` needs no questions.
+if (Test-Path $StateFile) {
+    try {
+        $previous = Get-Content $StateFile -Raw | ConvertFrom-Json
+        if ([string]::IsNullOrWhiteSpace($User) -and $previous.user) { $User = [string]$previous.user }
+        if ([string]::IsNullOrWhiteSpace($HostName) -and $previous.host) { $HostName = [string]$previous.host }
+        if ([string]::IsNullOrWhiteSpace($KeyPath) -and $previous.keyPath -and (Test-Path $previous.keyPath)) { $KeyPath = [string]$previous.keyPath }
+    } catch { }
+}
+
+Write-Host "`nutm-shell $Version" -ForegroundColor Blue
+Write-Host "One setup. Then just type 'utm' whenever you need the lab.`n" -ForegroundColor DarkGray
 
 if ([string]::IsNullOrWhiteSpace($User)) { $User = Read-Host 'UTORid' }
 if ([string]::IsNullOrWhiteSpace($HostName)) { $HostName = Read-Host 'Lab computer (example: dh2026pc08)' }
@@ -54,28 +75,13 @@ if ($Alias -notmatch '^[A-Za-z0-9._-]+$') { Fail 'Invalid SSH alias.' }
 if ($HostName -notmatch '^[A-Za-z0-9.-]+$') { Fail 'Invalid lab hostname.' }
 if ($HostName -notmatch '\.') { $HostName = "$HostName.utm.utoronto.ca" }
 
-$SshDir = Join-Path $HOME '.ssh'
-$StateDir = Join-Path (Join-Path $HOME '.config') 'utm-shell'
-$BinDir = Join-Path (Join-Path $HOME '.local') 'bin'
-$SshConfig = Join-Path $SshDir 'config'
-New-Item -ItemType Directory -Force -Path $SshDir, $StateDir, $BinDir | Out-Null
-
-if ([string]::IsNullOrWhiteSpace($KeyPath)) {
-    $oldState = Join-Path $StateDir 'config.json'
-    if (Test-Path $oldState) {
-        try {
-            $previous = Get-Content $oldState -Raw | ConvertFrom-Json
-            if ($previous.keyPath -and (Test-Path $previous.keyPath)) { $KeyPath = [string]$previous.keyPath }
-        } catch { }
-    }
-}
 if ([string]::IsNullOrWhiteSpace($KeyPath)) { $KeyPath = Join-Path $SshDir 'id_ed25519_utm' }
 if ($KeyPath.StartsWith('~')) { $KeyPath = Join-Path $HOME $KeyPath.Substring(1).TrimStart('/','\') }
 $KeyPath = [IO.Path]::GetFullPath([Environment]::ExpandEnvironmentVariables($KeyPath))
 $KeyCreated = $false
 
 if (-not (Test-Path $KeyPath)) {
-    Info 'Creating a dedicated SSH key'
+    Info 'Creating a dedicated UTM SSH key'
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $KeyPath) | Out-Null
     & $keygen.Source -q -t ed25519 -a 100 -N '' -f $KeyPath -C "utm-shell:$User@$HostName"
     if ($LASTEXITCODE -ne 0) { Fail 'Could not create SSH key.' }
@@ -110,10 +116,9 @@ $newConfig = if ($current) { "$current`r`n`r`n$block`r`n" } else { "$block`r`n" 
 [IO.File]::WriteAllText($SshConfig, $newConfig, [Text.UTF8Encoding]::new($false))
 & $ssh.Source -G $Alias *> $null
 if ($LASTEXITCODE -ne 0) { Fail 'Generated SSH config is invalid.' }
-Ok "Created SSH shortcut: ssh $Alias"
+Ok "SSH configured for $User@$HostName"
 
-# Install the smart local `utm` command. It checks network reachability and
-# opens Cisco Secure Client / the official UTORvpn guide when needed.
+# Install the friendly command before any network-dependent operation.
 [IO.File]::WriteAllText((Join-Path $StateDir 'alias'), "$Alias`n", [Text.UTF8Encoding]::new($false))
 $ConnectPath = Join-Path $StateDir 'connect.ps1'
 $connectText = (Invoke-WebRequest "$RawBase/connect.ps1" -UseBasicParsing).Content
@@ -123,14 +128,24 @@ $cmdText = "@echo off`r`npowershell.exe -NoProfile -ExecutionPolicy Bypass -File
 [IO.File]::WriteAllText($CmdPath, $cmdText, [Text.ASCIIEncoding]::new())
 
 $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-$parts = @()
-if ($userPath) { $parts = $userPath -split ';' }
+$parts = if ($userPath) { $userPath -split ';' } else { @() }
 if ($parts -notcontains $BinDir) {
     $newUserPath = if ([string]::IsNullOrWhiteSpace($userPath)) { $BinDir } else { "$BinDir;$userPath" }
     [Environment]::SetEnvironmentVariable('Path', $newUserPath, 'User')
 }
 if (($env:Path -split ';') -notcontains $BinDir) { $env:Path = "$BinDir;$env:Path" }
-Ok 'Installed smart command: utm'
+Ok 'Installed local command: utm'
+
+# Save state now so setup can be resumed after VPN installation without losing anything.
+$state = [ordered]@{
+    version = $Version
+    alias = $Alias
+    user = $User
+    host = $HostName
+    keyPath = $KeyPath
+    keyCreated = $KeyCreated
+}
+$state | ConvertTo-Json | Set-Content -Path $StateFile -Encoding UTF8
 
 function Test-Key {
     & $ssh.Source -o BatchMode=yes -o ConnectTimeout=6 -o ConnectionAttempts=1 $Alias true *> $null
@@ -141,23 +156,31 @@ if (-not $SkipKeyCopy) {
     if (Test-Key) {
         Ok 'Passwordless login already works'
     } else {
-        # Let the smart helper distinguish the common off-campus timeout from
-        # an authentication failure. It can launch UTORvpn help and retry.
-        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ConnectPath -EnsureNetwork
-        if ($LASTEXITCODE -ne 0) { Fail 'UTM network is still unreachable.' }
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ConnectPath -Probe
+        $probeCode = $LASTEXITCODE
+        if ($probeCode -eq 2) {
+            Write-Host "`nYou appear to be off the U of T network." -ForegroundColor Yellow
+            Write-Host 'Setup can continue from home: the next step helps you connect UTORvpn.' -ForegroundColor DarkGray
+            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ConnectPath -EnsureNetwork
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warning 'Local setup is saved. After connecting UTORvpn, paste the same setup command again; it will resume safely.'
+                exit 2
+            }
+        }
 
-        Write-Host "`nOne-time step: enter your UTORid password when SSH asks for it." -ForegroundColor Blue
-        Write-Host 'If this is your first connection, SSH may also ask you to confirm the host.' -ForegroundColor DarkGray
+        Write-Host "`nOne-time authentication" -ForegroundColor Blue
+        Write-Host 'SSH may ask for your UTORid password once to install your public key.'
+        Write-Host 'Your password is handled by SSH and is not stored by utm-shell.' -ForegroundColor DarkGray
         $pubText = ([IO.File]::ReadAllText("$KeyPath.pub")).Trim()
         $pubB64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($pubText))
         $remote = 'umask 077; mkdir -p ~/.ssh; touch ~/.ssh/authorized_keys; pub=$(printf ''%s'' ''{0}'' | base64 -d); grep -qxF "$pub" ~/.ssh/authorized_keys || printf ''%s\n'' "$pub" >> ~/.ssh/authorized_keys' -f $pubB64
         & $ssh.Source -o StrictHostKeyChecking=accept-new $Alias $remote
         if ($LASTEXITCODE -ne 0) {
             Write-Warning 'Could not log in. If you are off campus, connect to UTORvpn and retry.'
-            Write-Warning 'If your password is definitely correct but UTM still says Permission denied, your UTORid may not be provisioned on the lab system yet; contact course staff.'
+            Write-Warning 'If a known-correct password is rejected while UTM is reachable, your UTORid may not be provisioned on the lab system yet; contact course staff.'
             exit 1
         }
-        if (-not (Test-Key)) { Fail 'The key was copied, but passwordless login did not verify.' }
+        if (-not (Test-Key)) { Fail 'The public key was copied, but passwordless login did not verify.' }
         Ok 'Passwordless login works'
     }
 }
@@ -172,17 +195,6 @@ $cmd = "printf '%s' '$remoteB64' | base64 -d | bash -s -- '$hush'"
 if ($LASTEXITCODE -ne 0) { Fail 'Remote shell setup failed.' }
 Ok 'Remote shell installed'
 
-$state = [ordered]@{
-    version = $Version
-    alias = $Alias
-    user = $User
-    host = $HostName
-    keyPath = $KeyPath
-    keyCreated = $KeyCreated
-}
-$state | ConvertTo-Json | Set-Content -Path (Join-Path $StateDir 'config.json') -Encoding UTF8
-
-Write-Host "`nDone. From now on, just run:`n" -ForegroundColor Green
+Write-Host "`nReady. Day to day, use just:`n" -ForegroundColor Green
 Write-Host '    utm' -ForegroundColor Blue
-Write-Host "`nThe utm command detects off-campus access and helps you open UTORvpn." -ForegroundColor DarkGray
-Write-Host "Raw SSH still works as: ssh $Alias" -ForegroundColor DarkGray
+Write-Host "`nUseful:  utm status   utm vpn   utm host HOST   utm files   utm help" -ForegroundColor DarkGray
