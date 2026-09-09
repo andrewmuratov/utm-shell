@@ -22,15 +22,26 @@ jobs:
 
       - name: Validate Bash syntax
         run: |
+          bash -n setup.sh
+          bash -n remote.sh
           bash -n install.sh
           bash -n uninstall.sh
           bash -n doctor.sh
 
       - name: Smoke-test Bash CLIs
         run: |
+          bash setup.sh --help >/dev/null
           bash install.sh --help >/dev/null
           bash uninstall.sh --help >/dev/null
           bash doctor.sh --help >/dev/null
+
+      - name: Test remote shell in a clean temporary HOME
+        run: |
+          temp_home="$(mktemp -d)"
+          HOME="$temp_home" bash remote.sh 1 >/dev/null
+          bash -n "$temp_home/.bashrc"
+          bash -n "$temp_home/.config/utm-shell/shell.sh"
+          HOME="$temp_home" bash --noprofile --norc -ic 'source ~/.config/utm-shell/shell.sh; type c usage py gs utm-help >/dev/null; utm-version' 2>/dev/null | grep -q '1.2.0'
 
   windows:
     name: windows-latest / PowerShell
@@ -43,7 +54,7 @@ jobs:
         shell: pwsh
         run: |
           $failed = $false
-          foreach ($file in @('install.ps1', 'uninstall.ps1', 'doctor.ps1')) {
+          foreach ($file in @('setup.ps1', 'install.ps1', 'uninstall.ps1', 'doctor.ps1')) {
             $tokens = $null
             $errors = $null
             [System.Management.Automation.Language.Parser]::ParseFile(
@@ -61,6 +72,7 @@ jobs:
       - name: Smoke-test PowerShell CLIs
         shell: pwsh
         run: |
+          .\setup.ps1 -Help | Out-Null
           .\install.ps1 -Help | Out-Null
           .\uninstall.ps1 -Help | Out-Null
           .\doctor.ps1 -Help | Out-Null
