@@ -48,7 +48,7 @@ jobs:
           HOME="$temp_home" bash remote.sh 1 >/dev/null
           bash -n "$temp_home/.bashrc"
           bash -n "$temp_home/.config/utm-shell/shell.sh"
-          HOME="$temp_home" bash --noprofile --norc -ic 'source ~/.config/utm-shell/shell.sh; type c usage py gs utm-help >/dev/null; utm-version' 2>/dev/null | grep -q '1.5.0'
+          HOME="$temp_home" bash --noprofile --norc -ic 'source ~/.config/utm-shell/shell.sh; type c usage py gs utm-help >/dev/null; utm-version' 2>/dev/null | grep -q '1.6.0'
 
   windows:
     name: windows-latest / PowerShell
