@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-VERSION="1.5.0"
+VERSION="1.6.0"
 USE_HUSHLOGIN="${1:-1}"
 BASHRC="$HOME/.bashrc"
 START="# >>> utm-shell >>>"
@@ -110,7 +110,7 @@ function ff {
 }
 
 function path { printf '%s\n' "$PATH" | tr ':' '\n'; }
-function utm-version { printf 'utm-shell 1.5.0\n'; }
+function utm-version { printf 'utm-shell 1.6.0\n'; }
 
 function utm-help {
   cat <<'HELP_EOF'
