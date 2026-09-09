@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="430" viewBox="0 0 1200 430" role="img" aria-labelledby="title desc">
+  <title id="title">utm-shell terminal preview</title>
+  <desc id="desc">A dark terminal showing a local ssh utm command and the clean blue UTM remote prompt.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#0d1117"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-20%" width="120%" height="150%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="430" rx="30" fill="#f6f8fa" opacity="0"/>
+  <g filter="url(#shadow)">
+    <rect x="30" y="30" width="1140" height="360" rx="22" fill="url(#bg)" stroke="#30363d" stroke-width="2"/>
+    <path d="M30 92h1140" stroke="#30363d" stroke-width="2"/>
+    <circle cx="70" cy="61" r="9" fill="#ff5f57"/>
+    <circle cx="100" cy="61" r="9" fill="#febc2e"/>
+    <circle cx="130" cy="61" r="9" fill="#28c840"/>
+    <text x="600" y="68" text-anchor="middle" fill="#8b949e" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="18">utm-shell</text>
+
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="25">
+      <text x="78" y="145" fill="#8b949e">~</text>
+      <text x="78" y="187" fill="#58a6ff">❯</text>
+      <text x="112" y="187" fill="#f0f6fc">ssh utm</text>
+
+      <text x="78" y="259" fill="#58a6ff" font-weight="700">UTM</text>
+      <text x="138" y="259" fill="#8b949e">student@dh2026pc08</text>
+      <text x="430" y="259" fill="#f0f6fc">~</text>
+      <text x="78" y="303" fill="#58a6ff">❯</text>
+      <text x="112" y="303" fill="#f0f6fc">utm-help</text>
+
+      <text x="78" y="350" fill="#8b949e" font-size="20">ll · mkcd · ff · py · gs · gd · gl</text>
+    </g>
+  </g>
+</svg>

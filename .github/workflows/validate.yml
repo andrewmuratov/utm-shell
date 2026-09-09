@@ -1,0 +1,26 @@
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  bash:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate Bash syntax
+        run: |
+          bash -n install.sh
+          bash -n uninstall.sh
+
+      - name: Smoke-test CLI help
+        run: |
+          ./install.sh --help >/dev/null
+          ./uninstall.sh --help >/dev/null
