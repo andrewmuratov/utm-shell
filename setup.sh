@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-VERSION="1.2.0"
+VERSION="1.3.0"
 REPO_RAW="https://raw.githubusercontent.com/andrewmuratov/utm-shell/main"
 SSH_ALIAS="utm"
 UTORID=""
@@ -25,7 +25,7 @@ usage() {
   cat <<'EOF'
 utm-shell setup
 
-Normal use: just run it and answer two questions.
+Normal use: run it and answer two questions.
 
 Options:
   --user UTORID
@@ -75,8 +75,23 @@ read_tty() {
   printf -v "$var" '%s' "$value"
 }
 
+replace_block() {
+  local file="$1" start="$2" end="$3" body="$4" tmp
+  mkdir -p "$(dirname "$file")"
+  touch "$file"
+  tmp="$(mktemp)"
+  awk -v start="$start" -v end="$end" '
+    $0 == start { skip=1; next }
+    $0 == end   { skip=0; next }
+    !skip       { print }
+  ' "$file" > "$tmp"
+  cat "$tmp" > "$file"
+  rm -f "$tmp"
+  printf '\n%s\n%s\n%s\n' "$start" "$body" "$end" >> "$file"
+}
+
 printf '\n%sutm-shell%s %s\n' "$BLUE" "$RESET" "$VERSION"
-printf '%sSet up UTM lab SSH in about a minute.%s\n\n' "$DIM" "$RESET"
+printf '%sSet up UTM lab access in about a minute.%s\n\n' "$DIM" "$RESET"
 
 [[ -n "$UTORID" ]] || read_tty UTORID "UTORid"
 [[ -n "$UTM_HOST" ]] || read_tty UTM_HOST "Lab computer (example: dh2026pc08)"
@@ -86,14 +101,18 @@ printf '%sSet up UTM lab SSH in about a minute.%s\n\n' "$DIM" "$RESET"
 [[ "$UTM_HOST" =~ ^[A-Za-z0-9.-]+$ ]] || die "Invalid lab hostname"
 [[ "$UTM_HOST" == *.* ]] || UTM_HOST="${UTM_HOST}.utm.utoronto.ca"
 
-mkdir -p "$HOME/.ssh" "$HOME/.config/utm-shell"
+STATE_DIR="$HOME/.config/utm-shell"
+BIN_DIR="$HOME/.local/bin"
+mkdir -p "$HOME/.ssh" "$STATE_DIR" "$BIN_DIR"
 chmod 700 "$HOME/.ssh" 2>/dev/null || true
 
-# Keep setup predictable: use a dedicated UTM key by default, with no
-# passphrase prompt. Users who prefer another key can pass --key.
-if [[ -z "$KEY_PATH" ]]; then
-  KEY_PATH="$HOME/.ssh/id_ed25519_utm"
+# Keep setup predictable: use a dedicated UTM key by default. If this machine
+# was already configured by utm-shell, keep using the previous key.
+if [[ -z "$KEY_PATH" && -r "$STATE_DIR/config" ]]; then
+  previous_key="$(awk -F= '$1=="KEY_PATH" {gsub(/^\047|\047$/, "", $2); print $2; exit}' "$STATE_DIR/config" 2>/dev/null || true)"
+  [[ -n "$previous_key" && -f "$previous_key" ]] && KEY_PATH="$previous_key"
 fi
+[[ -n "$KEY_PATH" ]] || KEY_PATH="$HOME/.ssh/id_ed25519_utm"
 KEY_PATH="${KEY_PATH/#\~/$HOME}"
 KEY_CREATED=0
 
@@ -122,8 +141,6 @@ awk -v start="$START" -v end="$END" '
   $0 == end   { skip=0; next }
   !skip       { print }
 ' "$SSH_CONFIG" > "$tmp"
-
-# Trim trailing blank lines, then append one managed block.
 awk 'NF {blank=0} !NF {blank++} {line[NR]=$0} END {last=NR-blank; for(i=1;i<=last;i++) print line[i]}' "$tmp" > "$SSH_CONFIG"
 [[ -s "$SSH_CONFIG" ]] && printf '\n\n' >> "$SSH_CONFIG"
 cat >> "$SSH_CONFIG" <<EOF
@@ -133,29 +150,69 @@ Host $SSH_ALIAS
     User $UTORID
     IdentityFile "$KEY_PATH"
     IdentitiesOnly yes
+    ConnectTimeout 6
+    ConnectionAttempts 1
     ServerAliveInterval 60
     ServerAliveCountMax 3
 $END
 EOF
 
 ssh -G "$SSH_ALIAS" >/dev/null 2>&1 || die "Generated SSH config is invalid"
-ok "Created: ssh $SSH_ALIAS"
+ok "Created SSH shortcut: ssh $SSH_ALIAS"
+
+# Install the smart local `utm` command. It detects the common off-campus case
+# before starting an interactive SSH session and offers UTORvpn help.
+printf '%s\n' "$SSH_ALIAS" > "$STATE_DIR/alias"
+fetch "$REPO_RAW/connect.sh" > "$BIN_DIR/utm"
+chmod 755 "$BIN_DIR/utm"
+
+PATH_START="# >>> utm-shell path >>>"
+PATH_END="# <<< utm-shell path <<<"
+PATH_BODY='case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) export PATH="$HOME/.local/bin:$PATH" ;; esac'
+SHELL_NAME="$(basename "${SHELL:-sh}")"
+case "$SHELL_NAME" in
+  zsh)
+    replace_block "$HOME/.zshrc" "$PATH_START" "$PATH_END" "$PATH_BODY"
+    ;;
+  bash)
+    replace_block "$HOME/.bashrc" "$PATH_START" "$PATH_END" "$PATH_BODY"
+    ;;
+  fish)
+    mkdir -p "$HOME/.config/fish/conf.d"
+    printf 'fish_add_path -g $HOME/.local/bin\n' > "$HOME/.config/fish/conf.d/utm-shell.fish"
+    ;;
+  *)
+    replace_block "$HOME/.profile" "$PATH_START" "$PATH_END" "$PATH_BODY"
+    ;;
+esac
+ok "Installed smart command: utm"
 
 key_works() {
-  ssh -o BatchMode=yes -o ConnectTimeout=8 "$SSH_ALIAS" true >/dev/null 2>&1
+  ssh -o BatchMode=yes -o ConnectTimeout=6 -o ConnectionAttempts=1 "$SSH_ALIAS" true >/dev/null 2>&1
 }
 
 if [[ "$SKIP_KEY_COPY" -eq 0 ]]; then
   if key_works; then
     ok "Passwordless login already works"
   else
+    # If the lab network is unreachable, pause setup and explain UTORvpn rather
+    # than leaving the user at a hanging SSH command or vague timeout.
+    if "$BIN_DIR/utm" --probe >/dev/null 2>&1; then
+      :
+    else
+      probe_rc=$?
+      if [[ $probe_rc -eq 2 ]]; then
+        "$BIN_DIR/utm" --ensure-network || die "UTM network is still unreachable"
+      fi
+    fi
+
     printf '\n%sOne-time step:%s enter your UTORid password when SSH asks for it.\n' "$BLUE" "$RESET"
     printf '%sIf this is your first connection, SSH may also ask you to confirm the host.%s\n\n' "$DIM" "$RESET"
 
     if command -v ssh-copy-id >/dev/null 2>&1; then
       ssh-copy-id -o StrictHostKeyChecking=accept-new -i "${KEY_PATH}.pub" "$SSH_ALIAS" || {
         printf '\n' >&2
-        warn "Could not log in. Make sure you are on campus Wi-Fi or UTORvpn."
+        warn "Could not log in. If you are off campus, connect to UTORvpn and retry."
         warn "If the password is definitely correct but UTM still says Permission denied, your UTORid may not be provisioned on the lab system yet; contact course staff."
         exit 1
       }
@@ -188,7 +245,7 @@ else
 fi
 ok "Remote shell installed"
 
-cat > "$HOME/.config/utm-shell/config" <<EOF
+cat > "$STATE_DIR/config" <<EOF
 VERSION='$VERSION'
 SSH_ALIAS='$SSH_ALIAS'
 UTORID='$UTORID'
@@ -196,8 +253,9 @@ UTM_HOST='$UTM_HOST'
 KEY_PATH='$KEY_PATH'
 KEY_CREATED='$KEY_CREATED'
 EOF
-chmod 600 "$HOME/.config/utm-shell/config" 2>/dev/null || true
+chmod 600 "$STATE_DIR/config" 2>/dev/null || true
 
-printf '\n%sDone.%s From now on, just run:\n\n' "$GREEN" "$RESET"
-printf '    %sssh %s%s\n\n' "$BLUE" "$SSH_ALIAS" "$RESET"
-printf '%sInside UTM: utm-help%s\n' "$DIM" "$RESET"
+printf '\n%sDone.%s Open a new terminal, then just run:\n\n' "$GREEN" "$RESET"
+printf '    %sutm%s\n\n' "$BLUE" "$RESET"
+printf '%s`utm` checks whether the UTM network is reachable and helps with UTORvpn when you are off campus.%s\n' "$DIM" "$RESET"
+printf '%sRaw SSH still works as: ssh %s%s\n' "$DIM" "$SSH_ALIAS" "$RESET"
