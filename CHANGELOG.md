@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.4.0 — 2026-09-09
+
+- made the project fully centered on the single day-to-day command `utm`
+- added `utm status` for an immediate host/network/VPN readiness check
+- added `utm host HOST` so students can switch lab machines without editing SSH config
+- added `utm files` with copy-to/from-UTM examples
+- added `utm doctor` and `utm update` so troubleshooting and repairs no longer require cloning the repository
+- made `utm update` reuse saved UTORid, host, and key information
+- improved the off-campus flow so home/public-Wi-Fi failures are explained as a network/VPN issue before interactive SSH starts
+- made Enter the simple default action for opening/setup of UTORvpn
+- added automatic launch detection for Cisco Secure Client on Windows, macOS, and Linux
+- added a dedicated UTORvpn guide with the current general server and UofT Default group
+- made setup save local state before VPN-dependent steps so interrupted off-campus setup can safely resume
+- made Windows setup open Optional Features when OpenSSH Client is missing
+- refreshed the README and getting-started flow around one copy/paste setup command and a tiny command set
+- bumped the managed remote shell to 1.4.0 and expanded CI smoke tests
+
 ## 1.3.0 — 2026-09-09
 
 - added a smart local `utm` command as the recommended way to connect
