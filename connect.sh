@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-VERSION='1.6.0'
+VERSION='1.6.1'
 REPO_RAW='https://raw.githubusercontent.com/andrewmuratov/utm-shell/main'
 VPN_GUIDE='https://security.utoronto.ca/services/vpn/usage-guide/'
 VPN_DOWNLOAD='https://uoft.me/cisco-vpn-download'
@@ -179,19 +179,19 @@ print_install_steps() {
       elif command -v apt >/dev/null 2>&1; then
         printf '  %s1.%s In the page that opened, choose %sLinux (DEB)%s and download the .tgz.\n' "$BLUE" "$RESET" "$BLUE" "$RESET"
         printf '  %s2.%s Extract the .tgz, then open a terminal in the extracted folder.\n' "$BLUE" "$RESET"
-        printf '  %s3.%s Install the VPN package:\n' "$BLUE" "$RESET"
-        printf '       %ssudo apt install ./cisco-secure-client-vpn-*_amd64.deb%s\n' "$GREEN" "$RESET"
+        printf '  %s3.%s Install the main VPN package (not vpn-cli):\n' "$BLUE" "$RESET"
+        printf '       %ssudo apt install ./cisco-secure-client-vpn_*_amd64.deb%s\n' "$GREEN" "$RESET"
         printf '  %s4.%s Enter your computer password and confirm with y if asked. Keep this terminal open.\n\n' "$BLUE" "$RESET"
       elif command -v dnf >/dev/null 2>&1; then
         printf '  %s1.%s In the page that opened, choose %sLinux (RPM)%s and download the .tgz.\n' "$BLUE" "$RESET" "$BLUE" "$RESET"
         printf '  %s2.%s Extract the .tgz, then open a terminal in the extracted folder.\n' "$BLUE" "$RESET"
-        printf '  %s3.%s Install the VPN package:\n' "$BLUE" "$RESET"
-        printf '       %ssudo dnf install ./cisco-secure-client-vpn-*.rpm%s\n' "$GREEN" "$RESET"
+        printf '  %s3.%s Install the main VPN package (not vpn-cli):\n' "$BLUE" "$RESET"
+        printf '       %ssudo dnf install ./cisco-secure-client-vpn-[0-9]*.rpm%s\n' "$GREEN" "$RESET"
         printf '  %s4.%s Enter your computer password and confirm if asked. Keep this terminal open.\n\n' "$BLUE" "$RESET"
       else
         printf '  %s1.%s In the page that opened, download the Linux package for your distro.\n' "$BLUE" "$RESET"
         printf '  %s2.%s Extract the archive.\n' "$BLUE" "$RESET"
-        printf '  %s3.%s Install the cisco-secure-client-vpn package with your package manager.\n' "$BLUE" "$RESET"
+        printf '  %s3.%s Install the main cisco-secure-client-vpn package, not vpn-cli.\n' "$BLUE" "$RESET"
         printf '  %s4.%s Keep this terminal open.\n\n' "$BLUE" "$RESET"
       fi
       ;;
