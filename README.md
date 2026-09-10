@@ -34,33 +34,30 @@ Your UTORid password may be requested once to enable passwordless SSH.
 
 ### If you're off campus
 
-You don't need to figure out the VPN first. Setup detects it and guides you in order.
+`utm-shell` detects your operating system, opens U of T's **official Cisco Secure Client download page**, and shows only the steps for your platform.
 
-If Cisco Secure Client is missing, you'll see something like:
+| Platform | What it tells you to do |
+|---|---|
+| Windows | Download the Windows client (ARM64 only on ARM Windows), extract the ZIP if needed, run the Cisco Secure Client `.msi` |
+| macOS | Download the macOS client, open the `.dmg`, run the `.pkg`, and install only the **VPN** module |
+| Ubuntu / Debian | Choose **Linux (DEB)**, extract the `.tgz`, then run `sudo apt install ./cisco-secure-client-vpn-*_amd64.deb` |
+| Fedora / Red Hat | Choose **Linux (RPM)**, extract the `.tgz`, then run `sudo dnf install ./cisco-secure-client-vpn-*.rpm` |
+| WSL | Install the **Windows** Cisco client; `utm-shell` detects and launches it from WSL |
 
-```text
-UTORvpn setup
-  1. U of T VPN instructions opened in your browser.
-  2. Download + extract Cisco Secure Client for Linux.
-  3. In the extracted folder, run:
-     sudo apt install ./cisco-secure-client-vpn-*_amd64.deb
-  4. Leave this terminal open — utm-shell will continue automatically.
-
-Waiting for Cisco Secure Client...
-```
-
-As soon as Cisco is installed, utm-shell detects it, opens it, and shows:
+The setup terminal waits while you install Cisco. Once Cisco appears, it opens automatically and shows:
 
 ```text
 UTORvpn
   1. Cisco Secure Client opened.
-  2. Connect to general.vpn.utoronto.ca.
+  2. Enter general.vpn.utoronto.ca and select Connect.
   3. Sign in with your UTORid and password.
 
 Waiting for UTORvpn...
 ```
 
-When the VPN connects, setup continues automatically. Windows, macOS, WSL, Ubuntu/Debian, Fedora, and other supported systems get instructions matched to their platform.
+As soon as the VPN connects, setup continues automatically.
+
+Official links: [Cisco Secure Client download](https://uoft.me/cisco-vpn-download) · [U of T UTORvpn guide](https://security.utoronto.ca/services/vpn/usage-guide/)
 
 When setup finishes:
 
@@ -84,8 +81,6 @@ utm help            help
 At home, `utm` handles the same VPN flow automatically. On campus, it connects directly.
 
 UTORvpn server: `general.vpn.utoronto.ca`
-
-Official U of T VPN guide: https://security.utoronto.ca/services/vpn/usage-guide/
 
 ## Inside the UTM shell
 
