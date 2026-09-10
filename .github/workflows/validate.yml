@@ -31,7 +31,7 @@ jobs:
             for f in setup.sh connect.sh install.sh uninstall.sh doctor.sh; do dash -n "$f"; done
           fi
 
-      - name: Smoke-test CLIs
+      - name: Smoke-test CLIs and VPN automation
         run: |
           sh setup.sh --help >/dev/null
           sh connect.sh --help >/dev/null
@@ -40,7 +40,9 @@ jobs:
           sh uninstall.sh --help >/dev/null
           sh doctor.sh --help >/dev/null
           grep -q 'general.vpn.utoronto.ca' connect.sh
-          grep -q 'cisco-secure-client-vpn_\*_amd64.deb' connect.sh
+          grep -Fq "cisco-secure-client-vpn_[0-9]*_amd64.deb" connect.sh
+          grep -q 'install_linux_download_if_ready' connect.sh
+          grep -q 'Cisco download found' connect.sh
           grep -q "VERSION='1.7.0'" setup.sh
 
       - name: Test remote shell in a clean temporary HOME
@@ -136,7 +138,7 @@ jobs:
           }
           if ($failed) { exit 1 }
 
-      - name: Smoke-test PowerShell CLIs
+      - name: Smoke-test PowerShell CLIs and VPN automation
         shell: pwsh
         run: |
           .\setup.ps1 -Help | Out-Null
@@ -148,4 +150,5 @@ jobs:
           $connect = Get-Content .\connect.ps1 -Raw
           if ($connect -notmatch 'general.vpn.utoronto.ca') { throw 'VPN server missing' }
           if ($connect -notmatch 'core-vpn') { throw 'Windows VPN module guidance missing' }
+          if ($connect -notmatch 'Try-AutoInstallCisco') { throw 'Windows VPN auto-install missing' }
           if ((Get-Content .\setup.ps1 -Raw) -notmatch "Version = '1.7.0'") { throw 'Version mismatch' }
