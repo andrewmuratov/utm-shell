@@ -1,20 +1,26 @@
 <div align="center">
-  <img src=".github/assets/terminal.svg" alt="utm-shell connection flow" width="820">
 
-# utm-shell
+# UTM Shell
 
-**One setup command. Then just type `utm`.**
+**Simple UTM lab access. Set it up once, then type `utm`.**
 
 [![Validate](https://github.com/andrewmuratov/utm-shell/actions/workflows/validate.yml/badge.svg)](https://github.com/andrewmuratov/utm-shell/actions/workflows/validate.yml)
-[![MIT License](https://img.shields.io/badge/license-MIT-2f81f7.svg)](LICENSE)
-
-Windows · macOS · Linux · WSL · ChromeOS · FreeBSD · OpenBSD
+[![License: MIT](https://img.shields.io/badge/license-MIT-2f81f7.svg)](LICENSE)
+[![Windows](https://img.shields.io/badge/Windows-supported-0078D4?logo=windows11&logoColor=white)](docs/platforms.md)
+[![macOS](https://img.shields.io/badge/macOS-supported-000000?logo=apple&logoColor=white)](docs/platforms.md)
+[![Linux](https://img.shields.io/badge/Linux-supported-FCC624?logo=linux&logoColor=111111)](docs/platforms.md)
+[![WSL](https://img.shields.io/badge/WSL-supported-0078D4?logo=windows-terminal&logoColor=white)](docs/platforms.md)
+[![ChromeOS](https://img.shields.io/badge/ChromeOS-supported-4285F4?logo=googlechrome&logoColor=white)](docs/platforms.md)
+[![FreeBSD](https://img.shields.io/badge/FreeBSD-supported-AB2B28?logo=freebsd&logoColor=white)](docs/platforms.md)
+[![OpenBSD](https://img.shields.io/badge/OpenBSD-supported-F2CA30)](docs/platforms.md)
 
 </div>
 
 ## Install
 
-### macOS / Linux / WSL / ChromeOS
+Choose your computer and paste **one command**.
+
+### macOS / Linux / WSL / ChromeOS Linux
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/setup.sh | sh
@@ -22,39 +28,52 @@ curl -fsSL https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/setup.
 
 ### Windows 10 / 11
 
-Open PowerShell and paste:
+Open PowerShell:
 
 ```powershell
 irm https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/setup.ps1 | iex
 ```
 
-### FreeBSD
+<details>
+<summary><strong>FreeBSD / OpenBSD</strong></summary>
+
+**FreeBSD**
 
 ```sh
 fetch -q -o - https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/setup.sh | sh
 ```
 
-### OpenBSD
+**OpenBSD**
 
 ```sh
 ftp -V -o - https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/setup.sh | sh
 ```
 
-Enter your **UTORid**. The default lab computer is `dh2026pc08`.
+</details>
 
-## What setup does
+## Setup
 
-`utm-shell` handles the rest:
+The installer does almost everything for you.
 
-1. configures `ssh utm`
-2. creates/reuses an SSH key
-3. asks for your UTORid password once if the key must be authorized
-4. sets up the clean remote shell
-5. handles UTORvpn when you are off campus
+1. Enter your **UTORid**.
+2. If SSH needs authorization, enter your **UTORid password once**.
+3. When setup finishes, type:
+
+```text
+utm
+```
 
 Your password is never stored.
 
-## Off campus / UTORvpn
+The default lab computer is `dh2026pc08`. Change it later with:
+
+```text
+utm host HOST
+```
+
+## Off campus
+
+UTM lab machines normally require the U of T network or **UTORvpn**.
 
 Just run:
 
@@ -62,49 +81,23 @@ Just run:
 utm
 ```
 
-If Cisco Secure Client is already installed, `utm` opens it and waits for you to connect.
+If you are off campus, UTM Shell detects that automatically.
 
-If it is not installed, `utm` opens U of T's official Cisco download page and only shows the steps for your OS.
+- **Cisco already installed:** it opens Cisco Secure Client and waits for the VPN.
+- **Cisco not installed:** it opens the official U of T download page and guides the correct setup for your OS.
+- **Ubuntu / Debian and Fedora / RHEL:** downloaded Cisco packages are detected, extracted, and installed automatically; you only approve the administrator prompt.
+- **Windows:** the downloaded Cisco bundle is detected, extracted, and the VPN installer is opened automatically.
+- **macOS:** the downloaded Cisco image is detected and opened automatically; finish the Cisco package and select the VPN module.
 
-### Ubuntu / Debian
-
-1. Click **Linux (DEB)** on the page that opens.
-2. Leave the terminal open.
-3. `utm-shell` detects the download, extracts it, selects the **main VPN package** (not `vpn-cli`), and runs the install automatically.
-4. Enter your computer's administrator password once when `sudo` asks.
-
-No extracting folders. No package filename hunting. No `apt` command to copy.
-
-### Fedora / RHEL
-
-1. Click **Linux (RPM)**.
-2. Leave the terminal open.
-3. `utm-shell` extracts the download and installs the main VPN RPM automatically.
-4. Approve the administrator-password prompt.
-
-### Windows
-
-1. Click **Windows** (or **Windows ARM64** when appropriate).
-2. Leave PowerShell open.
-3. `utm-shell` detects the ZIP, extracts it, finds the `core-vpn` MSI, and starts that installer automatically.
-4. Approve the Windows administrator prompt.
-
-### macOS
-
-1. Click **macOS**.
-2. `utm-shell` detects the downloaded DMG and opens it automatically.
-3. Run the package and install only the **VPN** module.
-
-After Cisco is ready, `utm-shell` opens it and shows only:
+Then connect to:
 
 ```text
-1. Connect to general.vpn.utoronto.ca
-2. Sign in with your UTORid and password
+general.vpn.utoronto.ca
 ```
 
-It detects the VPN connection and continues automatically.
+Sign in with your UTORid. UTM Shell detects the connection and continues.
 
-Official U of T instructions: [UTORvpn usage guide](https://security.utoronto.ca/services/vpn/usage-guide/) · [Cisco Secure Client download](https://uoft.me/cisco-vpn-download)
+[Official UTORvpn guide](https://security.utoronto.ca/services/vpn/usage-guide/) · [Cisco Secure Client download](https://uoft.me/cisco-vpn-download)
 
 ## Daily use
 
@@ -112,59 +105,29 @@ Official U of T instructions: [UTORvpn usage guide](https://security.utoronto.ca
 utm
 ```
 
-That's it.
+That's the normal command.
 
 - on campus → connects directly
-- at home → opens/waits for UTORvpn, then connects
-- interrupted first setup → `utm` resumes it
-- SSH → passwordless after the one-time key authorization
+- off campus → handles the UTORvpn step, then connects
+- after first setup → SSH is passwordless
+- interrupted setup → run `utm` again and it resumes
 
-## Useful commands
+## Commands
 
-```text
-utm                 connect
-utm status          check connection
-utm vpn             open/setup UTORvpn
-utm host HOST       switch lab computer
-utm files           file-copy examples
-utm doctor          diagnose problems
-utm update          update/repair
-utm help            help
-```
+| Command | What it does |
+|---|---|
+| `utm` | Connect to the lab |
+| `utm status` | Check whether UTM is reachable |
+| `utm vpn` | Open or set up UTORvpn |
+| `utm host HOST` | Change lab computer |
+| `utm files` | Show file-copy examples |
+| `utm doctor` | Diagnose problems |
+| `utm update` | Update or repair UTM Shell |
+| `utm help` | Show help |
 
-Inside UTM:
-
-```text
-UTM yourutorid@dh2026pc08 ~
-❯
-```
-
-Run `utm-help` there for shortcuts such as `ll`, `c`, `py`, `mkcd`, `ff`, `gs`, and `bye`.
-
-## Platform support
-
-The SSH/setup layer uses native PowerShell on Windows and portable POSIX `sh` on Unix-like systems.
-
-| Platform | SSH/setup | UTORvpn helper |
-|---|---:|---:|
-| Windows 10/11 | ✓ | ✓ official Cisco client + automated bundle install |
-| macOS | ✓ | ✓ official Cisco client + DMG detection |
-| Ubuntu / Debian | ✓ | ✓ official DEB + automated extraction/install |
-| Fedora / RHEL | ✓ | ✓ official RPM + automated extraction/install |
-| WSL | ✓ | ✓ through Windows Cisco client |
-| ChromeOS Linux | ✓ | depends on Linux/VPN environment |
-| Arch / Alpine / Gentoo / NixOS / other Linux | ✓ | Cisco package compatibility dependent |
-| FreeBSD / OpenBSD | ✓ | campus or another U of T-supported VPN environment required |
-
-U of T currently documents Cisco Secure Client for Windows, macOS, and Linux DEB/RPM environments. `utm-shell` does not pretend unsupported Cisco packages exist on other systems.
+Inside the lab machine, run `utm-help` for the small set of shell shortcuts.
 
 ## Files
-
-```text
-utm files
-```
-
-shows copy examples such as:
 
 ```sh
 scp FILE utm:~/
@@ -172,23 +135,31 @@ scp utm:~/FILE .
 scp -r FOLDER utm:~/
 ```
 
-## If something breaks
+## Compatibility
+
+The local setup layer uses **PowerShell on Windows** and portable **POSIX `sh` on Unix-like systems**.
+
+Windows, macOS, Linux, WSL, ChromeOS Linux, FreeBSD, and OpenBSD are supported by the SSH/setup layer. UTORvpn availability depends on the Cisco client packages U of T provides for each platform.
+
+See [platform details](docs/platforms.md) for exact VPN support and limitations.
+
+## Troubleshooting
 
 ```text
 utm doctor
 utm update
 ```
 
-If a known-correct UTORid password is rejected while the UTM network is reachable, see [login problems](docs/login-problems.md).
+More help: [getting started](GETTING_STARTED.md) · [UTORvpn](docs/utorvpn.md) · [login problems](docs/login-problems.md) · [security](SECURITY.md)
 
-## What it changes
+## What UTM Shell changes
 
-Locally, utm-shell creates a managed `Host utm` SSH entry, the `utm` command, and an SSH key only when needed. On the UTM machine it adds a small managed Bash setup for the prompt and shortcuts.
+UTM Shell creates a managed SSH entry, the local `utm` command, and an SSH key when needed. It also adds a small managed shell setup on the UTM lab machine.
 
 It does **not** store passwords, upload private keys, disable SSH host verification, replace unrelated dotfiles, or install software on UTM lab machines.
 
-More: [getting started](GETTING_STARTED.md) · [UTORvpn](docs/utorvpn.md) · [platforms](docs/platforms.md) · [troubleshooting](docs/troubleshooting.md) · [security](SECURITY.md)
+---
 
-This is an independent convenience project and is not affiliated with or maintained by the University of Toronto. Official U of T and course instructions take precedence.
+UTM Shell is an independent convenience project and is not affiliated with or maintained by the University of Toronto. Official U of T and course instructions take precedence.
 
 [MIT](LICENSE) © 2026 Andrew Muratov
