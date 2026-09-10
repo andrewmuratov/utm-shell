@@ -4,6 +4,7 @@ set -uo pipefail
 VERSION='1.6.0'
 REPO_RAW='https://raw.githubusercontent.com/andrewmuratov/utm-shell/main'
 VPN_GUIDE='https://security.utoronto.ca/services/vpn/usage-guide/'
+VPN_DOWNLOAD='https://uoft.me/cisco-vpn-download'
 VPN_SERVER='general.vpn.utoronto.ca'
 STATE_DIR="$HOME/.config/utm-shell"
 STATE_FILE="$STATE_DIR/config"
@@ -49,9 +50,15 @@ current_user() {
   ssh -G "$SSH_ALIAS" 2>/dev/null | awk '$1=="user" {print $2; exit}'
 }
 
+is_wsl() {
+  [[ -n "${WSL_DISTRO_NAME:-}" ]] || grep -qi microsoft /proc/version 2>/dev/null
+}
+
 open_url() {
   local url="$1"
-  if command -v xdg-open >/dev/null 2>&1; then
+  if is_wsl 2>/dev/null && command -v cmd.exe >/dev/null 2>&1; then
+    cmd.exe /c start "" "$url" >/dev/null 2>&1
+  elif command -v xdg-open >/dev/null 2>&1; then
     xdg-open "$url" >/dev/null 2>&1 &
   elif command -v open >/dev/null 2>&1; then
     open "$url" >/dev/null 2>&1
@@ -63,8 +70,8 @@ open_url() {
   fi
 }
 
-is_wsl() {
-  [[ -n "${WSL_DISTRO_NAME:-}" ]] || grep -qi microsoft /proc/version 2>/dev/null
+open_vpn_download() {
+  open_url "$VPN_DOWNLOAD" || open_url "$VPN_GUIDE" || true
 }
 
 windows_vpn_path() {
@@ -149,47 +156,57 @@ probe_network() {
 print_connect_steps() {
   printf '\n%sUTORvpn%s\n' "$BLUE" "$RESET"
   printf '  %s1.%s Cisco Secure Client opened.\n' "$BLUE" "$RESET"
-  printf '  %s2.%s Connect to %s%s%s.\n' "$BLUE" "$RESET" "$BLUE" "$VPN_SERVER" "$RESET"
+  printf '  %s2.%s Enter %s%s%s and select Connect.\n' "$BLUE" "$RESET" "$BLUE" "$VPN_SERVER" "$RESET"
   printf '  %s3.%s Sign in with your UTORid and password.\n\n' "$BLUE" "$RESET"
 }
 
 print_install_steps() {
   printf '\n%sUTORvpn setup%s\n' "$BLUE" "$RESET"
-  printf '  %s1.%s U of T VPN instructions opened in your browser.\n' "$BLUE" "$RESET"
 
   case "$(uname -s 2>/dev/null || true)" in
     Darwin)
-      printf '  %s2.%s Download Cisco Secure Client for macOS.\n' "$BLUE" "$RESET"
-      printf '  %s3.%s Run the .pkg and install only the VPN module.\n' "$BLUE" "$RESET"
+      printf '  %s1.%s In the page that opened, download the %smacOS%s client.\n' "$BLUE" "$RESET" "$BLUE" "$RESET"
+      printf '  %s2.%s Open the downloaded .dmg, then run the Cisco Secure Client .pkg.\n' "$BLUE" "$RESET"
+      printf '  %s3.%s Accept the licence and uncheck every module except %sVPN%s.\n' "$BLUE" "$RESET" "$BLUE" "$RESET"
+      printf '  %s4.%s Finish installation. Keep this terminal open.\n\n' "$BLUE" "$RESET"
       ;;
     Linux*)
       if is_wsl; then
-        printf '  %s2.%s Install Cisco Secure Client on Windows, not inside WSL.\n' "$BLUE" "$RESET"
-        printf '  %s3.%s Leave this terminal open.\n' "$BLUE" "$RESET"
+        printf '  %s1.%s In the page that opened, download the %sWindows%s client.\n' "$BLUE" "$RESET" "$BLUE" "$RESET"
+        printf '  %s2.%s If it downloads as a .zip, extract it in Windows.\n' "$BLUE" "$RESET"
+        printf '  %s3.%s Run the Cisco Secure Client .msi and finish installation in Windows.\n' "$BLUE" "$RESET"
+        printf '  %s4.%s Return here. utm-shell will detect the Windows VPN client.\n\n' "$BLUE" "$RESET"
       elif command -v apt >/dev/null 2>&1; then
-        printf '  %s2.%s Download + extract Cisco Secure Client for Linux.\n' "$BLUE" "$RESET"
-        printf '  %s3.%s In the extracted folder, run:\n' "$BLUE" "$RESET"
+        printf '  %s1.%s In the page that opened, choose %sLinux (DEB)%s and download the .tgz.\n' "$BLUE" "$RESET" "$BLUE" "$RESET"
+        printf '  %s2.%s Extract the .tgz, then open a terminal in the extracted folder.\n' "$BLUE" "$RESET"
+        printf '  %s3.%s Install the VPN package:\n' "$BLUE" "$RESET"
         printf '       %ssudo apt install ./cisco-secure-client-vpn-*_amd64.deb%s\n' "$GREEN" "$RESET"
+        printf '  %s4.%s Enter your computer password and confirm with y if asked. Keep this terminal open.\n\n' "$BLUE" "$RESET"
       elif command -v dnf >/dev/null 2>&1; then
-        printf '  %s2.%s Download + extract Cisco Secure Client for Linux.\n' "$BLUE" "$RESET"
-        printf '  %s3.%s In the extracted folder, run:\n' "$BLUE" "$RESET"
+        printf '  %s1.%s In the page that opened, choose %sLinux (RPM)%s and download the .tgz.\n' "$BLUE" "$RESET" "$BLUE" "$RESET"
+        printf '  %s2.%s Extract the .tgz, then open a terminal in the extracted folder.\n' "$BLUE" "$RESET"
+        printf '  %s3.%s Install the VPN package:\n' "$BLUE" "$RESET"
         printf '       %ssudo dnf install ./cisco-secure-client-vpn-*.rpm%s\n' "$GREEN" "$RESET"
+        printf '  %s4.%s Enter your computer password and confirm if asked. Keep this terminal open.\n\n' "$BLUE" "$RESET"
       else
-        printf '  %s2.%s Download Cisco Secure Client for Linux.\n' "$BLUE" "$RESET"
-        printf '  %s3.%s Install the VPN package using your system package manager.\n' "$BLUE" "$RESET"
+        printf '  %s1.%s In the page that opened, download the Linux package for your distro.\n' "$BLUE" "$RESET"
+        printf '  %s2.%s Extract the archive.\n' "$BLUE" "$RESET"
+        printf '  %s3.%s Install the cisco-secure-client-vpn package with your package manager.\n' "$BLUE" "$RESET"
+        printf '  %s4.%s Keep this terminal open.\n\n' "$BLUE" "$RESET"
       fi
       ;;
     MINGW*|MSYS*|CYGWIN*)
-      printf '  %s2.%s Download Cisco Secure Client for Windows.\n' "$BLUE" "$RESET"
-      printf '  %s3.%s Run the .msi installer.\n' "$BLUE" "$RESET"
+      printf '  %s1.%s In the page that opened, download the %sWindows%s client.\n' "$BLUE" "$RESET" "$BLUE" "$RESET"
+      printf '  %s2.%s If it downloads as a .zip, extract it.\n' "$BLUE" "$RESET"
+      printf '  %s3.%s Run the Cisco Secure Client .msi and accept the licence.\n' "$BLUE" "$RESET"
+      printf '  %s4.%s Finish installation. Keep this terminal open.\n\n' "$BLUE" "$RESET"
       ;;
     *)
-      printf '  %s2.%s Download Cisco Secure Client for your computer.\n' "$BLUE" "$RESET"
-      printf '  %s3.%s Install the VPN component.\n' "$BLUE" "$RESET"
+      printf '  %s1.%s Download Cisco Secure Client for your operating system.\n' "$BLUE" "$RESET"
+      printf '  %s2.%s Install the VPN component using U of T instructions.\n' "$BLUE" "$RESET"
+      printf '  %s3.%s Keep this terminal open.\n\n' "$BLUE" "$RESET"
       ;;
   esac
-
-  printf '  %s4.%s Leave this terminal open — utm-shell will continue automatically.\n\n' "$BLUE" "$RESET"
 }
 
 wait_for_vpn() {
@@ -239,7 +256,7 @@ vpn_open() {
     return $?
   fi
 
-  open_url "$VPN_GUIDE" || true
+  open_vpn_download
   print_install_steps
   wait_for_vpn_client
 }
@@ -254,7 +271,7 @@ ensure_network() {
     return $?
   fi
 
-  open_url "$VPN_GUIDE" || true
+  open_vpn_download
   print_install_steps
   wait_for_vpn_client
 }
