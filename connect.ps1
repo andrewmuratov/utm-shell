@@ -11,6 +11,7 @@ $ErrorActionPreference = 'Stop'
 $Version = '1.6.0'
 $RawBase = 'https://raw.githubusercontent.com/andrewmuratov/utm-shell/main'
 $VpnGuide = 'https://security.utoronto.ca/services/vpn/usage-guide/'
+$VpnDownload = 'https://uoft.me/cisco-vpn-download'
 $VpnServer = 'general.vpn.utoronto.ca'
 $StateDir = Join-Path (Join-Path $HOME '.config') 'utm-shell'
 $AliasFile = Join-Path $StateDir 'alias'
@@ -50,6 +51,10 @@ function Open-Url([string]$Url) {
     catch { Write-Host $Url; return $false }
 }
 
+function Open-VpnDownload {
+    if (-not (Open-Url $VpnDownload)) { [void](Open-Url $VpnGuide) }
+}
+
 function Get-VpnClientPath {
     $candidates = @()
     if ($env:ProgramFiles) {
@@ -85,17 +90,20 @@ function Get-NetworkState {
 function Show-VpnConnectSteps {
     Write-Host "`nUTORvpn" -ForegroundColor Blue
     Write-Host '  1. Cisco Secure Client opened.'
-    Write-Host "  2. Connect to $VpnServer."
+    Write-Host "  2. Enter $VpnServer and select Connect."
     Write-Host '  3. Sign in with your UTORid and password.'
     Write-Host
 }
 
 function Show-VpnInstallSteps {
+    $arch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()
+    $label = if ($arch -eq 'Arm64') { 'Windows ARM64' } else { 'Windows' }
+
     Write-Host "`nUTORvpn setup" -ForegroundColor Blue
-    Write-Host '  1. U of T VPN instructions opened in your browser.'
-    Write-Host '  2. Download Cisco Secure Client for Windows.'
-    Write-Host '  3. Run the .msi installer.'
-    Write-Host '  4. Leave this window open - utm-shell will continue automatically.'
+    Write-Host "  1. In the page that opened, download the $label client."
+    Write-Host '  2. If it downloads as a .zip, extract it.'
+    Write-Host '  3. Run the Cisco Secure Client .msi and accept the licence.'
+    Write-Host '  4. Finish installation. Keep this PowerShell window open.'
     Write-Host
 }
 
@@ -147,7 +155,7 @@ function Open-UtorVpn {
         return (Wait-ForVpn)
     }
 
-    [void](Open-Url $VpnGuide)
+    Open-VpnDownload
     Show-VpnInstallSteps
     return (Wait-ForVpnClient)
 }
@@ -163,7 +171,7 @@ function Wait-ForNetwork {
         return (Wait-ForVpn)
     }
 
-    [void](Open-Url $VpnGuide)
+    Open-VpnDownload
     Show-VpnInstallSteps
     return (Wait-ForVpnClient)
 }
