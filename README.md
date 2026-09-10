@@ -40,9 +40,11 @@ Your UTORid password may be requested once to enable passwordless SSH.
 |---|---|
 | Windows | Download the Windows client (ARM64 only on ARM Windows), extract the ZIP if needed, run the Cisco Secure Client `.msi` |
 | macOS | Download the macOS client, open the `.dmg`, run the `.pkg`, and install only the **VPN** module |
-| Ubuntu / Debian | Choose **Linux (DEB)**, extract the `.tgz`, then run `sudo apt install ./cisco-secure-client-vpn-*_amd64.deb` |
-| Fedora / Red Hat | Choose **Linux (RPM)**, extract the `.tgz`, then run `sudo dnf install ./cisco-secure-client-vpn-*.rpm` |
+| Ubuntu / Debian | Choose **Linux (DEB)**, extract the `.tgz`, then run `sudo apt install ./cisco-secure-client-vpn_*_amd64.deb` |
+| Fedora / Red Hat | Choose **Linux (RPM)**, extract the `.tgz`, then run `sudo dnf install ./cisco-secure-client-vpn-[0-9]*.rpm` |
 | WSL | Install the **Windows** Cisco client; `utm-shell` detects and launches it from WSL |
+
+On Linux, install the main `cisco-secure-client-vpn` package — **not** the separate `vpn-cli` package.
 
 The setup terminal waits while you install Cisco. Once Cisco appears, it opens automatically and shows:
 
