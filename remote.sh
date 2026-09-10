@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-VERSION="1.7.0"
+VERSION="1.7.2"
 USE_HUSHLOGIN="${1:-1}"
 BASHRC="$HOME/.bashrc"
 START="# >>> utm-shell >>>"
@@ -11,6 +11,7 @@ LOGIN_END="# <<< utm-shell login <<<"
 STATE_DIR="$HOME/.config/utm-shell"
 SHELL_FILE="$STATE_DIR/shell.sh"
 STATE_FILE="$STATE_DIR/state"
+BACKUP_FILE="$STATE_DIR/bashrc.before-utm-shell"
 
 mkdir -p "$STATE_DIR"
 touch "$BASHRC"
@@ -28,10 +29,24 @@ remove_block() {
   rm -f "$tmp"
 }
 
-cat > "$SHELL_FILE" <<'SHELL_EOF'
-# Managed by utm-shell. Rerun `utm update` to update this file.
+# Keep one copy of the user's pre-migration .bashrc. utm-shell only replaces
+# blocks carrying its own markers; everything else remains untouched.
+if [[ -s "$BASHRC" && ! -e "$BACKUP_FILE" ]]; then
+  cp "$BASHRC" "$BACKUP_FILE"
+  chmod 600 "$BACKUP_FILE"
+fi
 
-unalias c cls usage py gs gd gl utm-help utm-version 2>/dev/null || true
+# Remove every older inline utm-shell block before installing the loader.
+# This repairs early versions that defined functions directly in .bashrc and
+# could conflict with pre-existing aliases such as `usage` or `path`.
+remove_block "$BASHRC" "$START" "$END"
+
+cat > "$SHELL_FILE" <<'SHELL_EOF'
+# Managed by UTM Shell. Run `utm update` on your computer to update this file.
+
+# Older/manual setups may already define aliases with these names. Remove
+# aliases before Bash parses the function definitions below.
+unalias c cls usage py gs gd gl path mkcd ff utm-help utm-version 2>/dev/null || true
 [[ $- == *i* ]] || return 0
 
 if [[ -n ${TERM:-} ]] && command -v infocmp >/dev/null 2>&1 && ! infocmp "$TERM" >/dev/null 2>&1; then
@@ -84,11 +99,11 @@ function gl { _utm_git_need_repo || return; git log --oneline --graph --decorate
 function mkcd { [[ $# -eq 1 ]] || { printf 'usage: mkcd <directory>\n' >&2; return 2; }; mkdir -p -- "$1" && cd -- "$1"; }
 function ff { [[ $# -ge 1 ]] || { printf 'usage: ff <name>\n' >&2; return 2; }; find . -iname "*$1*" 2>/dev/null; }
 function path { printf '%s\n' "$PATH" | tr ':' '\n'; }
-function utm-version { printf 'utm-shell 1.7.0\n'; }
+function utm-version { printf 'UTM Shell 1.7.2\n'; }
 
 function utm-help {
   cat <<'HELP_EOF'
-utm-shell commands
+UTM Shell commands
 
   ll / la       detailed / hidden-file listings
   .. / ...      move up one / two directories
@@ -115,8 +130,8 @@ fi
 PS1='\[\e[1;34m\]UTM\[\e[0m\] \[\e[90m\]\u@\h\[\e[0m\] \[\e[1;37m\]\w\[\e[0m\]\n\[\e[1;34m\]❯\[\e[0m\] '
 SHELL_EOF
 chmod 600 "$SHELL_FILE"
+bash --noprofile --norc -n "$SHELL_FILE"
 
-remove_block "$BASHRC" "$START" "$END"
 cat >> "$BASHRC" <<'BASHRC_EOF'
 
 # >>> utm-shell >>>
@@ -126,7 +141,11 @@ fi
 # <<< utm-shell <<<
 BASHRC_EOF
 
-if ! bash -n "$BASHRC"; then printf 'utm-shell: ~/.bashrc has a syntax error outside the managed block.\n' >&2; exit 2; fi
+if ! bash --noprofile --norc -n "$BASHRC"; then
+  printf 'UTM Shell: ~/.bashrc still has a syntax error outside the managed block.\n' >&2
+  printf 'Backup: %s\n' "$BACKUP_FILE" >&2
+  exit 2
+fi
 
 if [[ -f "$HOME/.bash_profile" ]]; then LOGIN_FILE="$HOME/.bash_profile"
 elif [[ -f "$HOME/.bash_login" ]]; then LOGIN_FILE="$HOME/.bash_login"
@@ -156,4 +175,4 @@ if [[ "$USE_HUSHLOGIN" == "1" && ! -e "$HOME/.hushlogin" ]]; then touch "$HOME/.
   printf 'HUSH_CREATED=%q\n' "$HUSH_CREATED"
 } > "$STATE_FILE"
 chmod 600 "$STATE_FILE"
-printf 'utm-shell %s installed\n' "$VERSION"
+printf 'UTM Shell %s installed\n' "$VERSION"
