@@ -8,85 +8,80 @@ For normal use, just run:
 utm
 ```
 
-If you're off campus, utm-shell handles the VPN flow for you.
+If you're off campus, `utm-shell` detects your platform and guides the VPN setup automatically.
 
-## What utm-shell does
+Official U of T links:
 
-If Cisco Secure Client is already installed:
+- [Download Cisco Secure Client](https://uoft.me/cisco-vpn-download)
+- [UTORvpn usage guide](https://security.utoronto.ca/services/vpn/usage-guide/)
+
+## Windows 10 / 11
+
+1. On the U of T download page, choose the **Windows** client. Use the ARM64 download only on ARM-based Windows devices.
+2. If the download is a `.zip`, extract it.
+3. Run the Cisco Secure Client `.msi` installer.
+4. Accept the licence and finish installation.
+
+`utm-shell` keeps waiting in the original PowerShell window and detects Cisco when installation finishes.
+
+## macOS
+
+1. On the U of T download page, choose the **macOS** client.
+2. Open the downloaded `.dmg`.
+3. Run the Cisco Secure Client `.pkg` installer.
+4. Accept the licence agreement.
+5. Uncheck every module except **VPN**, then finish installation.
+
+Keep the original terminal open while installing.
+
+## Ubuntu / Debian
+
+1. On the U of T download page, choose **Linux (DEB)**.
+2. Download and extract the `.tgz` archive.
+3. Open a terminal in the extracted directory.
+4. Run:
+
+```bash
+sudo apt install ./cisco-secure-client-vpn-*_amd64.deb
+```
+
+Enter your computer password and confirm with `y` if prompted. Keep the original `utm-shell` terminal open.
+
+## Fedora / Red Hat
+
+1. On the U of T download page, choose **Linux (RPM)**.
+2. Download and extract the `.tgz` archive.
+3. Open a terminal in the extracted directory.
+4. Run:
+
+```bash
+sudo dnf install ./cisco-secure-client-vpn-*.rpm
+```
+
+Enter your computer password and confirm if prompted. Keep the original `utm-shell` terminal open.
+
+## WSL
+
+Install Cisco Secure Client on **Windows**, not inside WSL:
+
+1. Choose the Windows client on the U of T download page.
+2. Extract the ZIP if needed and run the `.msi` in Windows.
+3. Return to WSL. `utm-shell` detects and launches the Windows Cisco client when possible.
+
+## Connecting after installation
+
+Once Cisco is installed, `utm-shell` opens it and shows:
 
 ```text
 UTORvpn
   1. Cisco Secure Client opened.
-  2. Connect to general.vpn.utoronto.ca.
+  2. Enter general.vpn.utoronto.ca and select Connect.
   3. Sign in with your UTORid and password.
 
 Waiting for UTORvpn...
 ```
 
-When the VPN connects, utm-shell continues automatically.
-
-If Cisco is not installed, utm-shell opens the official U of T VPN instructions and shows short platform-specific install steps. It then waits for Cisco to appear, opens it automatically, and continues.
-
-## Windows 10 / 11
-
-```text
-1. Download Cisco Secure Client for Windows.
-2. Run the .msi installer.
-3. Leave the terminal open.
-```
-
-Windows may request administrator approval during installation.
-
-## macOS
-
-```text
-1. Download Cisco Secure Client for macOS.
-2. Run the .pkg installer.
-3. Install only the VPN module.
-4. Leave the terminal open.
-```
-
-## Ubuntu / Debian
-
-```text
-1. Download Cisco Secure Client for Linux.
-2. Extract the downloaded archive.
-3. Open a terminal in the extracted folder.
-4. Run:
-
-   sudo apt install ./cisco-secure-client-vpn-*_amd64.deb
-```
-
-Leave the original utm-shell terminal open while installing.
-
-## Fedora / Red Hat
-
-```text
-1. Download Cisco Secure Client for Linux.
-2. Extract the downloaded archive.
-3. Open a terminal in the extracted folder.
-4. Install the VPN RPM with dnf.
-```
-
-Use the exact package filename supplied by U of T.
-
-## WSL
-
-Install Cisco Secure Client on **Windows**, not inside WSL. utm-shell detects the Windows client from WSL and launches it for you when possible.
-
-## Connect
-
-After installation:
-
-```text
-1. Open Cisco Secure Client.
-2. Connect to general.vpn.utoronto.ca.
-3. Sign in with your UTORid and password.
-```
-
-Official U of T instructions:
-
-https://security.utoronto.ca/services/vpn/usage-guide/
+When the VPN connects, `utm-shell` continues automatically.
 
 If you get stuck:
 
@@ -96,4 +91,4 @@ utm doctor
 utm vpn
 ```
 
-> utm-shell is an independent convenience project. U of T's current instructions take precedence.
+> `utm-shell` is an independent convenience project. U of T's current instructions take precedence.
