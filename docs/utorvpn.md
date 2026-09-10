@@ -39,11 +39,13 @@ Keep the original terminal open while installing.
 1. On the U of T download page, choose **Linux (DEB)**.
 2. Download and extract the `.tgz` archive.
 3. Open a terminal in the extracted directory.
-4. Run:
+4. Install the **main VPN package**, not `vpn-cli`:
 
 ```bash
-sudo apt install ./cisco-secure-client-vpn-*_amd64.deb
+sudo apt install ./cisco-secure-client-vpn_*_amd64.deb
 ```
+
+The underscore after `vpn` is intentional. It selects the GUI VPN package and avoids the separate `cisco-secure-client-vpn-cli` package.
 
 Enter your computer password and confirm with `y` if prompted. Keep the original `utm-shell` terminal open.
 
@@ -52,10 +54,10 @@ Enter your computer password and confirm with `y` if prompted. Keep the original
 1. On the U of T download page, choose **Linux (RPM)**.
 2. Download and extract the `.tgz` archive.
 3. Open a terminal in the extracted directory.
-4. Run:
+4. Install the **main VPN package**, not `vpn-cli`:
 
 ```bash
-sudo dnf install ./cisco-secure-client-vpn-*.rpm
+sudo dnf install ./cisco-secure-client-vpn-[0-9]*.rpm
 ```
 
 Enter your computer password and confirm if prompted. Keep the original `utm-shell` terminal open.
