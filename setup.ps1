@@ -11,7 +11,7 @@ param(
 
 Set-StrictMode -Version 2.0
 $ErrorActionPreference = 'Stop'
-$Version = '1.6.0'
+$Version = '1.7.0'
 $RawBase = 'https://raw.githubusercontent.com/andrewmuratov/utm-shell/main'
 $DefaultHost = 'dh2026pc08'
 $Start = '# >>> utm-shell >>>'
@@ -24,8 +24,10 @@ if ($Help) {
 @'
 utm-shell setup
 
-Usually just run the one-line installer from the README.
-Only your UTORid is needed on a new install.
+Normal install:
+  irm https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/setup.ps1 | iex
+
+Usually the only thing you enter is your UTORid.
 
 Options:
   -User UTORID
@@ -42,7 +44,7 @@ $ssh = Get-Command ssh.exe -ErrorAction SilentlyContinue
 $keygen = Get-Command ssh-keygen.exe -ErrorAction SilentlyContinue
 if (-not $ssh -or -not $keygen) {
     try { Start-Process 'ms-settings:optionalfeatures' | Out-Null } catch { }
-    Fail "OpenSSH Client is required. Windows Optional Features was opened; install OpenSSH Client, then paste the same setup command again."
+    Fail 'OpenSSH Client is required. Windows Optional Features was opened. Install OpenSSH Client, then paste the same setup command again.'
 }
 
 $SshDir = Join-Path $HOME '.ssh'
@@ -61,7 +63,6 @@ function Get-SshValue([string]$Name) {
     return ''
 }
 
-# Reuse saved setup.
 if (Test-Path $StateFile) {
     try {
         $previous = Get-Content $StateFile -Raw | ConvertFrom-Json
@@ -71,7 +72,6 @@ if (Test-Path $StateFile) {
     } catch { }
 }
 
-# Adopt an older/manual Host utm configuration when possible.
 if ([string]::IsNullOrWhiteSpace($HostName)) {
     $existingHost = Get-SshValue 'hostname'
     if ($existingHost -like '*.utm.utoronto.ca') {
@@ -137,6 +137,7 @@ $End
     if ($LASTEXITCODE -ne 0) { Fail 'Generated SSH config is invalid.' }
 }
 
+$SetupComplete = $false
 function Save-State {
     $state = [ordered]@{
         version = $Version
@@ -145,6 +146,7 @@ function Save-State {
         host = $HostName
         keyPath = $KeyPath
         keyCreated = $KeyCreated
+        complete = $script:SetupComplete
     }
     $state | ConvertTo-Json | Set-Content -Path $StateFile -Encoding UTF8
 }
@@ -178,11 +180,7 @@ function Test-KeyPath([string]$Candidate) {
 }
 
 function Find-AuthorizedKey {
-    $candidates = @(
-        (Join-Path $SshDir 'id_ed25519'),
-        (Join-Path $SshDir 'id_ecdsa'),
-        (Join-Path $SshDir 'id_rsa')
-    )
+    $candidates = @((Join-Path $SshDir 'id_ed25519'), (Join-Path $SshDir 'id_ecdsa'), (Join-Path $SshDir 'id_rsa'))
     Get-ChildItem -Path $SshDir -Filter '*.pub' -ErrorAction SilentlyContinue | ForEach-Object {
         $candidate = $_.FullName.Substring(0, $_.FullName.Length - 4)
         if (Test-Path $candidate) { $candidates += $candidate }
@@ -205,7 +203,7 @@ if (-not $SkipKeyCopy) {
     if (-not (Test-Key)) {
         & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ConnectPath -EnsureNetwork
         if ($LASTEXITCODE -ne 0) {
-            Write-Host 'Setup saved. Connect UTORvpn, then run this setup command again.' -ForegroundColor Yellow
+            Write-Host "`nSetup paused. Type utm whenever your VPN/network is ready." -ForegroundColor Yellow
             exit 2
         }
 
@@ -231,4 +229,6 @@ $hush = if ($NoHushLogin) { '0' } else { '1' }
 if ($LASTEXITCODE -ne 0) { Fail 'Remote shell setup failed.' }
 Ok 'Remote shell'
 
+$SetupComplete = $true
+Save-State
 Write-Host "`nReady. Type: utm" -ForegroundColor Green

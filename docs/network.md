@@ -1,10 +1,16 @@
 # Network requirement
 
-UTM lab SSH hosts are not generally reachable from the public Internet. Connect through either:
+UTM lab SSH hosts normally require either:
 
-- the U of T campus network, or
-- UTORvpn
+- the **U of T campus network**, or
+- **UTORvpn**.
 
-before running the installer, `ssh utm`, `scp`, diagnostics, or X11 forwarding.
+For normal use, just type:
 
-A DNS error such as `Could not resolve hostname` can mean either the hostname is a placeholder/typo or the required U of T network path is not active.
+```text
+utm
+```
+
+On a supported desktop OS, `utm` opens Cisco Secure Client when the VPN is needed and waits for the connection. On a platform without a U of T-supported Cisco package, establish a U of T network path separately and `utm` continues once the lab host is reachable.
+
+A DNS/timeout error can therefore mean the VPN/network path is missing, not that your UTORid password is wrong.

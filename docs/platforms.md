@@ -1,161 +1,91 @@
 # Platform support
 
-`utm-shell` supports the major desktop operating systems used to connect to UTM lab machines.
+`utm-shell` has two separate pieces:
 
-| Platform | Installer | SSH / SCP | Passwordless keys | X11 GUI forwarding |
-|---|---|---:|---:|---:|
-| Windows 10/11 | `install.ps1` | ✓ | ✓ | ✓ with an X server |
-| macOS (Intel / Apple Silicon) | `install.sh` | ✓ | ✓ | ✓ with XQuartz |
-| Linux | `install.sh` | ✓ | ✓ | ✓ when an X server/XWayland is available |
-| WSL | `install.sh` | ✓ | ✓ | ✓ through WSLg/X server |
-| ChromeOS Linux environment | `install.sh` | ✓ | ✓ | depends on Linux GUI support |
-| BSD / other Unix | `install.sh` | ✓ when Bash + OpenSSH are installed | ✓ | platform-dependent |
+- **local client:** runs on your computer and is portable across Windows and Unix-like systems
+- **remote shell:** runs on the UTM lab computer, which already provides Bash
 
-The UTM machine itself runs Linux/Bash, so the remote shell setup is identical regardless of the operating system on your own computer.
+That means your own Unix-like computer does **not** need Bash. The Unix installer/client are POSIX `sh` scripts.
 
-> You still need to be on the U of T network or connected through **UTORvpn** before a UTM lab hostname can be reached.
+| Platform | One-line install | SSH / SCP | Automatic Cisco launch | Off-campus note |
+|---|---:|---:|---:|---|
+| Windows 10/11 | ✓ PowerShell | ✓ | ✓ | U of T Cisco client |
+| macOS | ✓ `sh` | ✓ | ✓ | U of T Cisco client |
+| Ubuntu / Debian | ✓ `sh` | ✓ | ✓ | U of T DEB client |
+| Fedora / RHEL | ✓ `sh` | ✓ | ✓ | U of T RPM client |
+| WSL | ✓ `sh` | ✓ | ✓ via Windows | install Cisco on Windows |
+| ChromeOS Linux | ✓ `sh` | ✓ | when compatible | network/VPN support varies |
+| Arch / Alpine / Gentoo / NixOS / other Linux | ✓ `sh` | ✓ | when Cisco is compatible | U of T publishes DEB/RPM packages |
+| FreeBSD | ✓ base `fetch` + `sh` | ✓ | — | campus or separate supported VPN path |
+| OpenBSD | ✓ base `ftp` + `sh` | ✓ | — | campus or separate supported VPN path |
+| NetBSD / DragonFlyBSD / other Unix | ✓ with a downloader + `sh` | ✓ | platform-dependent | network/VPN support varies |
 
-## Windows 10 / 11
+## Install commands
 
-Use **PowerShell** or **Windows Terminal**. The native installer does not require WSL, Git Bash, Cygwin, or a Unix compatibility layer.
-
-```powershell
-$installer = "$env:TEMP\utm-shell-install.ps1"
-Invoke-WebRequest https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/install.ps1 -OutFile $installer
-& $installer
-```
-
-If `ssh.exe` is missing, install **OpenSSH Client** from:
-
-**Settings → System → Optional features → View features → OpenSSH Client**
-
-or from an elevated PowerShell:
+### Windows
 
 ```powershell
-Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0
+irm https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/setup.ps1 | iex
 ```
 
-After setup:
+### macOS / Linux / WSL / ChromeOS Linux
 
-```powershell
-ssh utm
-scp .\exercise.py utm:~/exercise.py
-scp utm:~/result.txt .\result.txt
+```sh
+curl -fsSL https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/setup.sh | sh
 ```
 
-Diagnostics:
+If `curl` is absent, the installer itself also understands `wget`, FreeBSD `fetch`, and OpenBSD `ftp`.
 
-```powershell
-.\doctor.ps1
+### FreeBSD
+
+```sh
+fetch -q -o - https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/setup.sh | sh
 ```
 
-Uninstall:
+### OpenBSD
 
-```powershell
-.\uninstall.ps1
+```sh
+ftp -V -o - https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/setup.sh | sh
 ```
 
-### Windows X11 / graphical applications
+## Local shell compatibility
 
-Native OpenSSH can forward X11, but Windows needs an X server such as **MobaXterm**, **VcXsrv**, or **Xming** running locally.
+The installer adds `~/.local/bin` to the appropriate startup file for common shells:
 
-With an X server running, a common PowerShell setup is:
+- Bash → `~/.bashrc`
+- Zsh → `~/.zshrc`
+- Fish → `~/.config/fish/conf.d/utm-shell.fish`
+- Csh/Tcsh → `~/.cshrc` or `~/.tcshrc`
+- Ksh and other POSIX shells → `~/.profile`
 
-```powershell
-$env:DISPLAY = '127.0.0.1:0.0'
-ssh -Y utm
-```
+Open a new terminal once after first install if your current shell has not picked up the PATH change yet.
 
-Then on the UTM machine you can test with an X11 application such as `xeyes` when available.
+## Requirements
 
-`-Y` enables **trusted X11 forwarding**. Use it only with machines you trust. Normal command-line work does not need X11 forwarding.
+The local Unix path needs:
 
-## macOS
+- a POSIX `sh`
+- OpenSSH client (`ssh`, `ssh-keygen`; `scp` for file copying)
+- `awk`, `mktemp`, and normal base-system utilities
+- one downloader: `curl`, `wget`, FreeBSD `fetch`, or OpenBSD `ftp`
 
-OpenSSH ships with macOS. Run:
+No local Bash, Python, Node, package manager, or Git checkout is required.
 
-```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/install.sh)
-```
+## VPN support vs. shell support
 
-After setup:
+Do not confuse **utm-shell support** with **Cisco's platform support**. `utm-shell` can configure and use SSH on BSD and non-DEB/RPM Linux systems, but U of T's current Cisco Secure Client instructions are for Windows, macOS, and Linux, with Linux packages documented for Debian- and Fedora-based systems.
 
-```bash
-ssh utm
-scp exercise.py utm:~/exercise.py
-scp utm:~/result.txt ./result.txt
-```
+If your platform has no U of T-supported Cisco package, `utm` still behaves cleanly: it explains the limitation and waits for UTM to become reachable instead of failing with a misleading SSH/password error.
 
-Diagnostics:
+## Validation
 
-```bash
-./doctor.sh
-```
+CI validates:
 
-### macOS X11 / graphical applications
+- Ubuntu + Bash/Dash
+- macOS
+- Windows PowerShell
+- Alpine/BusyBox `sh` as a non-DEB/RPM Linux environment
+- real FreeBSD VM
+- real OpenBSD VM
 
-macOS does not ship an X server. Install and launch **XQuartz**, then open a new terminal and use:
-
-```bash
-ssh -Y utm
-```
-
-If XQuartz was just installed, logging out and back in may be required before `DISPLAY` integration works correctly.
-
-## Linux
-
-Most distributions already include an OpenSSH client. Install with your distribution package manager if `ssh -V` fails.
-
-Then run:
-
-```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/install.sh)
-```
-
-Examples:
-
-```bash
-ssh utm
-scp exercise.py utm:~/exercise.py
-scp utm:~/result.txt ./result.txt
-```
-
-For graphical forwarding, Linux desktop environments generally already have X11 or XWayland support:
-
-```bash
-ssh -Y utm
-```
-
-## WSL
-
-Treat WSL as Linux and run `install.sh` inside your WSL distribution. Your SSH config and key live inside that distribution's Linux home directory.
-
-On Windows 11 with WSLg, remote Linux GUI applications may work through:
-
-```bash
-ssh -Y utm
-```
-
-If you instead run `ssh` from native PowerShell, use `install.ps1`; native Windows and WSL have separate home directories and therefore separate SSH configuration unless you intentionally share them.
-
-## Terminal compatibility
-
-The remote UTM image can be older than your local terminal emulator. Modern terminals may advertise a `TERM` value the UTM terminfo database does not know.
-
-The setup keeps the remote shell compatible by falling back to `xterm-256color` when necessary. This covers terminals such as Ghostty without changing your local terminal configuration.
-
-## Host-key warnings
-
-The first connection to a lab machine may ask you to confirm its SSH host key. That is normal for a hostname you have never used before.
-
-If OpenSSH later reports **REMOTE HOST IDENTIFICATION HAS CHANGED**, do not globally disable host verification. UTM lab machines may be reimaged, but an unexpected key change can also indicate a security problem. Verify that you are using the intended UTM hostname, then remove only the stale entry with:
-
-```bash
-ssh-keygen -R dh2026pc08.utm.utoronto.ca
-```
-
-The same command works in PowerShell when Windows OpenSSH is installed.
-
-## What "cross-platform" means here
-
-The project supports operating systems that can run a modern OpenSSH client. Mobile operating systems and locked-down systems without OpenSSH are outside the supported installer matrix, although any compatible SSH client can still connect manually using the same hostname and UTORid.
+The tests cover script parsing and CLI smoke tests without requiring a live UTM account. A real UTM login still depends on U of T networking, account provisioning, and the lab service itself.

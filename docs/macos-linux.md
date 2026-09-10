@@ -1,37 +1,32 @@
-# macOS / Linux / WSL quick reference
+# Unix quick reference
 
-## Install
+For macOS, Linux, WSL and ChromeOS Linux:
 
-```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/install.sh)
+```sh
+curl -fsSL https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/setup.sh | sh
 ```
 
-## Connect
+FreeBSD:
 
-```bash
-ssh utm
+```sh
+fetch -q -o - https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/setup.sh | sh
 ```
 
-## Copy files
+OpenBSD:
 
-```bash
-scp exercise.py utm:~/exercise.py
-scp utm:~/result.txt ./result.txt
-scp -r lab01 utm:~/labs/
+```sh
+ftp -V -o - https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/setup.sh | sh
 ```
 
-## Diagnose
+Then use:
 
-From a cloned copy of the repository:
-
-```bash
-bash doctor.sh
+```text
+utm             connect
+utm status      check readiness
+utm vpn         open/setup UTORvpn
+utm files       file-copy examples
+utm doctor      diagnose
+utm update      update/repair
 ```
 
-## Uninstall
-
-```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/uninstall.sh)
-```
-
-For X11 forwarding and platform-specific details, see [platforms.md](platforms.md).
+You do not need Bash on your own Unix machine. The local installer/client use POSIX `sh`; Bash is used only on the UTM lab machine.

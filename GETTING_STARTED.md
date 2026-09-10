@@ -1,66 +1,55 @@
-# Getting Started
+# Getting started
 
 You do **not** need a GitHub account or prior SSH knowledge.
 
-## 1. Paste one command
+## 1. Install
 
-### Windows 10 / 11
+### macOS / Linux / WSL / ChromeOS
 
-Open PowerShell and paste:
+```sh
+curl -fsSL https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/setup.sh | sh
+```
+
+### Windows
 
 ```powershell
 irm https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/setup.ps1 | iex
 ```
 
-### macOS / Linux / WSL / ChromeOS Linux
+### FreeBSD
 
-Open a terminal and paste:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/setup.sh | bash
+```sh
+fetch -q -o - https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/setup.sh | sh
 ```
 
-On a new install, enter your **UTORid**. That's normally the only question.
+### OpenBSD
 
-The default lab computer is `dh2026pc08`. Change it later with `utm host HOST`.
+```sh
+ftp -V -o - https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/setup.sh | sh
+```
 
-## 2. If you're off campus
+Enter your **UTORid**. New installs use `dh2026pc08` by default.
 
-Setup handles UTORvpn in a short, ordered flow.
+## 2. If you are off campus
 
-If Cisco Secure Client is missing, it opens U of T's official VPN instructions and shows steps for your operating system. For Ubuntu/Debian, for example:
+`utm-shell` notices that UTM is not reachable.
+
+If Cisco Secure Client is supported on your platform, it opens U of T's official download page, gives short OS-specific instructions, waits for installation, opens Cisco, and then asks you to:
 
 ```text
-UTORvpn setup
-  1. U of T VPN instructions opened in your browser.
-  2. Download + extract Cisco Secure Client for Linux.
-  3. In the extracted folder, run:
-     sudo apt install ./cisco-secure-client-vpn-*_amd64.deb
-  4. Leave this terminal open — utm-shell will continue automatically.
-
-Waiting for Cisco Secure Client...
+1. Connect to general.vpn.utoronto.ca
+2. Sign in with your UTORid and password
 ```
 
-After Cisco is installed, utm-shell detects and opens it:
+When the VPN connects, setup continues automatically.
 
-```text
-UTORvpn
-  1. Cisco Secure Client opened.
-  2. Connect to general.vpn.utoronto.ca.
-  3. Sign in with your UTORid and password.
+If your OS does not have an applicable U of T Cisco package, connect through campus networking or another U of T-supported VPN environment. Leave the terminal open and utm-shell continues as soon as UTM is reachable.
 
-Waiting for UTORvpn...
-```
+## 3. One password, once
 
-Once UTORvpn connects, setup continues automatically. You normally do **not** need to rerun anything.
+If no already-authorized SSH key works, SSH asks for your UTORid password once so utm-shell can add your **public** key.
 
-Official U of T VPN instructions: https://security.utoronto.ca/services/vpn/usage-guide/
-
-## 3. One-time SSH login
-
-SSH may ask for your UTORid password once so it can install your public key.
-
-Your password is handled by SSH and is not stored by utm-shell.
+Your password is not stored.
 
 ## 4. Done
 
@@ -70,28 +59,20 @@ From then on:
 utm
 ```
 
-On campus it connects directly. Off campus it runs the same UTORvpn flow automatically.
+If the first setup was interrupted, the same `utm` command finishes it automatically.
 
-## Useful commands
-
-```text
-utm                 connect
-utm status          check connection
-utm vpn             open/setup UTORvpn
-utm host [HOST]     show/change lab computer
-utm files           file-copy examples
-utm doctor          diagnose problems
-utm update          update/repair
-utm help            help
-```
-
-Inside UTM:
+Useful commands:
 
 ```text
-UTM yourutorid@dh2026pc08 ~
-❯
+utm status
+utm vpn
+utm host HOST
+utm files
+utm doctor
+utm update
+utm help
 ```
 
-Use `utm-help` for the remote shortcuts and `bye` to disconnect.
+Inside UTM, run `utm-help` for the remote shortcuts and `bye` to disconnect.
 
-If something fails, run `utm doctor`. If a known-correct password is rejected while UTM is reachable, see [Login problems](docs/login-problems.md).
+Official VPN help: [U of T UTORvpn guide](https://security.utoronto.ca/services/vpn/usage-guide/).

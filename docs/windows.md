@@ -1,43 +1,22 @@
 # Windows quick reference
 
-Use PowerShell or Windows Terminal.
-
-## Install
+Open PowerShell or Windows Terminal and paste:
 
 ```powershell
-$installer = "$env:TEMP\utm-shell-install.ps1"
-Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/install.ps1 -OutFile $installer
-& $installer
+irm https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/setup.ps1 | iex
 ```
 
-## Connect
+Then use:
 
-```powershell
-ssh utm
+```text
+utm             connect
+utm status      check readiness
+utm vpn         open/setup UTORvpn
+utm files       file-copy examples
+utm doctor      diagnose
+utm update      update/repair
 ```
 
-## Copy files
+If OpenSSH Client is missing, setup opens Windows Optional Features and tells you what to install.
 
-```powershell
-scp .\exercise.py utm:~/exercise.py
-scp utm:~/result.txt .\result.txt
-scp -r .\lab01 utm:~/labs/
-```
-
-## Diagnose
-
-From a cloned copy of the repository:
-
-```powershell
-.\doctor.ps1
-```
-
-## Uninstall
-
-```powershell
-$uninstaller = "$env:TEMP\utm-shell-uninstall.ps1"
-Invoke-WebRequest -UseBasicParsing https://raw.githubusercontent.com/andrewmuratov/utm-shell/main/uninstall.ps1 -OutFile $uninstaller
-& $uninstaller
-```
-
-For OpenSSH installation and optional X11 forwarding, see [platforms.md](platforms.md#windows-10--11).
+For first-time UTORvpn, download the matching Windows Cisco bundle, extract it if needed, and run the MSI whose name contains **core-vpn**. `utm-shell` then launches Cisco and waits for the VPN automatically.

@@ -1,9 +1,14 @@
 # CI coverage
 
-The `Validate` workflow runs on every push and pull request.
+`Validate` runs on every push and pull request.
 
-- Ubuntu: Bash syntax + CLI smoke tests
-- macOS: Bash syntax + CLI smoke tests
-- Windows: PowerShell parser + CLI smoke tests
+It checks:
 
-This catches platform-specific parser/shell regressions before setup instructions are published.
+- Ubuntu: POSIX `sh`, Dash, Bash remote-shell tests
+- macOS: POSIX `sh` + Bash remote-shell tests
+- Alpine: BusyBox `sh` on a non-DEB/RPM Linux environment
+- FreeBSD: real FreeBSD VM using base `sh`
+- OpenBSD: real OpenBSD VM using base `sh`
+- Windows: native PowerShell parser + CLI smoke tests
+
+These tests do not log into a real UTM account. Live SSH still depends on U of T networking, the selected lab host, and account provisioning.

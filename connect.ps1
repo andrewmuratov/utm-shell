@@ -8,7 +8,7 @@ param(
 
 Set-StrictMode -Version 2.0
 $ErrorActionPreference = 'Stop'
-$Version = '1.6.0'
+$Version = '1.7.0'
 $RawBase = 'https://raw.githubusercontent.com/andrewmuratov/utm-shell/main'
 $VpnGuide = 'https://security.utoronto.ca/services/vpn/usage-guide/'
 $VpnDownload = 'https://uoft.me/cisco-vpn-download'
@@ -17,6 +17,7 @@ $StateDir = Join-Path (Join-Path $HOME '.config') 'utm-shell'
 $AliasFile = Join-Path $StateDir 'alias'
 $StateFile = Join-Path $StateDir 'config.json'
 $SshAlias = 'utm'
+
 if (Test-Path $AliasFile) {
     $candidate = ([IO.File]::ReadAllText($AliasFile)).Trim()
     if ($candidate) { $SshAlias = $candidate }
@@ -44,6 +45,12 @@ function Get-SshValue([string]$Name) {
         if ($line -match "^$([regex]::Escape($Name))\s+(.+)$") { return $Matches[1].Trim() }
     }
     return ''
+}
+
+function Get-State {
+    if (-not (Test-Path $StateFile)) { return $null }
+    try { return (Get-Content $StateFile -Raw | ConvertFrom-Json) }
+    catch { return $null }
 }
 
 function Open-Url([string]$Url) {
@@ -78,12 +85,8 @@ function Get-NetworkState {
     $code = $LASTEXITCODE
     $text = ($output | Out-String)
     if ($code -eq 0) { return @{ State='reachable'; Output=$text } }
-    if ($text -match 'Permission denied|Host key verification failed|REMOTE HOST IDENTIFICATION HAS CHANGED|authenticity of host') {
-        return @{ State='reachable'; Output=$text }
-    }
-    if ($text -match 'Connection timed out|Operation timed out|No route to host|Network is unreachable|Could not resolve hostname|Name or service not known|Temporary failure in name resolution|Connection refused') {
-        return @{ State='network'; Output=$text }
-    }
+    if ($text -match 'Permission denied|Host key verification failed|REMOTE HOST IDENTIFICATION HAS CHANGED|authenticity of host') { return @{ State='reachable'; Output=$text } }
+    if ($text -match 'Connection timed out|Operation timed out|No route to host|Network is unreachable|Could not resolve hostname|Name or service not known|Temporary failure in name resolution|Connection refused') { return @{ State='network'; Output=$text } }
     return @{ State='unknown'; Output=$text }
 }
 
@@ -98,38 +101,37 @@ function Show-VpnConnectSteps {
 function Show-VpnInstallSteps {
     $arch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()
     $label = if ($arch -eq 'Arm64') { 'Windows ARM64' } else { 'Windows' }
-
     Write-Host "`nUTORvpn setup" -ForegroundColor Blue
-    Write-Host "  1. In the page that opened, download the $label client."
-    Write-Host '  2. If it downloads as a .zip, extract it.'
-    Write-Host '  3. Run the Cisco Secure Client .msi and accept the licence.'
-    Write-Host '  4. Finish installation. Keep this PowerShell window open.'
+    Write-Host "  1. Download the $label Cisco Secure Client from the page that opened."
+    Write-Host '  2. Extract the ZIP if needed.'
+    Write-Host '  3. Run the .msi whose name contains core-vpn.'
+    Write-Host '  4. Approve the installer. Leave this PowerShell window open.'
     Write-Host
 }
 
 function Wait-ForVpn {
     $spin = @('|','/','-','\')
     Write-Host -NoNewline 'Waiting for UTORvpn... '
-    for ($i = 0; $i -lt 90; $i++) {
+    for ($i = 0; $i -lt 150; $i++) {
         $probe = Get-NetworkState
         if ($probe.State -ne 'network') {
-            Write-Host "`r✓ UTORvpn connected.                    " -ForegroundColor Green
+            Write-Host "`r✓ UTM network ready.                         " -ForegroundColor Green
             return $true
         }
         Write-Host -NoNewline "`rWaiting for UTORvpn... $($spin[$i % 4])"
         Start-Sleep -Seconds 2
     }
-    Write-Host "`rStill offline.                           " -ForegroundColor Yellow
+    Write-Host "`rStill offline.                              " -ForegroundColor Yellow
     return $false
 }
 
 function Wait-ForVpnClient {
     $spin = @('|','/','-','\')
     Write-Host -NoNewline 'Waiting for Cisco Secure Client... '
-    for ($i = 0; $i -lt 300; $i++) {
+    for ($i = 0; $i -lt 900; $i++) {
         $client = Get-VpnClientPath
         if ($client) {
-            Write-Host "`r✓ Cisco Secure Client installed.         " -ForegroundColor Green
+            Write-Host "`r✓ Cisco Secure Client installed.             " -ForegroundColor Green
             Start-Process $client | Out-Null
             Show-VpnConnectSteps
             return (Wait-ForVpn)
@@ -137,24 +139,15 @@ function Wait-ForVpnClient {
         Write-Host -NoNewline "`rWaiting for Cisco Secure Client... $($spin[$i % 4])"
         Start-Sleep -Seconds 2
     }
-    Write-Host "`rStill waiting for Cisco Secure Client.   " -ForegroundColor Yellow
+    Write-Host "`rStill waiting for Cisco Secure Client.       " -ForegroundColor Yellow
     return $false
 }
 
 function Open-UtorVpn {
     $probe = Get-NetworkState
-    if ($probe.State -ne 'network') {
-        Write-Host '✓ UTM is already reachable.' -ForegroundColor Green
-        return $true
-    }
-
+    if ($probe.State -ne 'network') { Write-Host '✓ UTM is already reachable.' -ForegroundColor Green; return $true }
     $client = Get-VpnClientPath
-    if ($client) {
-        Start-Process $client | Out-Null
-        Show-VpnConnectSteps
-        return (Wait-ForVpn)
-    }
-
+    if ($client) { Start-Process $client | Out-Null; Show-VpnConnectSteps; return (Wait-ForVpn) }
     Open-VpnDownload
     Show-VpnInstallSteps
     return (Wait-ForVpnClient)
@@ -163,14 +156,8 @@ function Open-UtorVpn {
 function Wait-ForNetwork {
     $probe = Get-NetworkState
     if ($probe.State -ne 'network') { return $true }
-
     $client = Get-VpnClientPath
-    if ($client) {
-        Start-Process $client | Out-Null
-        Show-VpnConnectSteps
-        return (Wait-ForVpn)
-    }
-
+    if ($client) { Start-Process $client | Out-Null; Show-VpnConnectSteps; return (Wait-ForVpn) }
     Open-VpnDownload
     Show-VpnInstallSteps
     return (Wait-ForVpnClient)
@@ -183,11 +170,8 @@ function Show-Status {
     Write-Host -NoNewline "$userName@$hostName — "
     switch ($probe.State) {
         'reachable' { Write-Host 'ready' -ForegroundColor Green }
-        'network' { Write-Host 'UTORvpn needed' -ForegroundColor Yellow }
-        default {
-            Write-Host 'check failed' -ForegroundColor Yellow
-            if ($probe.Output) { Write-Host $probe.Output.Trim() -ForegroundColor DarkGray }
-        }
+        'network' { Write-Host 'UTORvpn/network needed' -ForegroundColor Yellow }
+        default { Write-Host 'check failed' -ForegroundColor Yellow; if ($probe.Output) { Write-Host $probe.Output.Trim() -ForegroundColor DarkGray } }
     }
 }
 
@@ -195,7 +179,6 @@ function Set-LabHost([string]$NewHost) {
     if ([string]::IsNullOrWhiteSpace($NewHost)) { Write-Host (Get-SshValue 'hostname'); return }
     if ($NewHost -notmatch '^[A-Za-z0-9.-]+$') { throw 'Invalid host.' }
     if ($NewHost -notmatch '\.') { $NewHost = "$NewHost.utm.utoronto.ca" }
-
     $config = Join-Path (Join-Path $HOME '.ssh') 'config'
     if (-not (Test-Path $config)) { throw 'Run setup again.' }
     $lines = [IO.File]::ReadAllText($config) -split "`r?`n"
@@ -206,22 +189,17 @@ function Set-LabHost([string]$NewHost) {
         if ($inside -and $line -match '^\s*HostName\s+') { "    HostName $NewHost" } else { $line }
     }
     [IO.File]::WriteAllText($config, (($updated -join "`r`n").TrimEnd() + "`r`n"), [Text.UTF8Encoding]::new($false))
-
     if (Test-Path $StateFile) {
-        try {
-            $state = Get-Content $StateFile -Raw | ConvertFrom-Json
-            $state.host = $NewHost
-            $state | ConvertTo-Json | Set-Content -Path $StateFile -Encoding UTF8
-        } catch { }
+        try { $state = Get-Content $StateFile -Raw | ConvertFrom-Json; $state.host = $NewHost; $state | ConvertTo-Json | Set-Content -Path $StateFile -Encoding UTF8 } catch { }
     }
     Write-Host $NewHost -ForegroundColor Green
 }
 
 function Show-Files {
 @"
-scp FILE ${SshAlias}:~/            # computer -> UTM
-scp ${SshAlias}:~/FILE .            # UTM -> computer
-scp -r FOLDER ${SshAlias}:~/        # folder -> UTM
+scp FILE ${SshAlias}:~/             # computer -> UTM
+scp ${SshAlias}:~/FILE .             # UTM -> computer
+scp -r FOLDER ${SshAlias}:~/         # folder -> UTM
 "@ | Write-Host
 }
 
@@ -233,12 +211,12 @@ function Run-Doctor {
 }
 
 function Run-Update {
-    if (-not (Test-Path $StateFile)) { throw 'Run setup again.' }
-    $state = Get-Content $StateFile -Raw | ConvertFrom-Json
+    $state = Get-State
+    if (-not $state) { throw 'Run setup again.' }
     $path = Join-Path $env:TEMP 'utm-shell-setup.ps1'
     Invoke-WebRequest "$RawBase/setup.ps1" -OutFile $path -UseBasicParsing
     $args = @('-NoProfile','-ExecutionPolicy','Bypass','-File',$path,'-User',[string]$state.user,'-HostName',[string]$state.host)
-    if ($state.keyPath) { $args += @('-KeyPath',[string]$state.keyPath) }
+    if ($state.keyPath) { $args += @('-KeyPath', [string]$state.keyPath) }
     & powershell.exe @args
     return $LASTEXITCODE
 }
@@ -249,11 +227,7 @@ if ($Probe) {
     if ($probe.State -eq 'network') { exit 2 }
     exit 1
 }
-
-if ($EnsureNetwork) {
-    if (Wait-ForNetwork) { exit 0 }
-    exit 2
-}
+if ($EnsureNetwork) { if (Wait-ForNetwork) { exit 0 }; exit 2 }
 
 switch ($Command) {
     'help' { Show-Usage; exit 0 }
@@ -265,9 +239,9 @@ switch ($Command) {
     'guide' { [void](Open-Url $VpnGuide); exit 0 }
     'host' { Set-LabHost $Value; exit 0 }
     'files' { Show-Files; exit 0 }
-    'doctor' { Run-Doctor; exit $LASTEXITCODE }
-    'update' { Run-Update; exit $LASTEXITCODE }
-    'repair' { Run-Update; exit $LASTEXITCODE }
+    'doctor' { $rc = Run-Doctor; exit $rc }
+    'update' { $rc = Run-Update; exit $rc }
+    'repair' { $rc = Run-Update; exit $rc }
     'raw' { & ssh.exe $SshAlias; exit $LASTEXITCODE }
     '--raw' { & ssh.exe $SshAlias; exit $LASTEXITCODE }
     '' { }
@@ -275,6 +249,17 @@ switch ($Command) {
     default { Write-Error 'Unknown command. Try `utm help`.'; exit 2 }
 }
 
-if (-not (Wait-ForNetwork)) { exit 2 }
+$state = Get-State
+if ($state -and ((-not ($state.PSObject.Properties.Name -contains 'complete')) -or -not [bool]$state.complete)) {
+    Write-Host 'Finishing setup...' -ForegroundColor Blue
+    $rc = Run-Update
+    exit $rc
+}
+
+if (-not (Wait-ForNetwork)) {
+    Write-Host 'Type utm again whenever the VPN/network is ready.' -ForegroundColor Yellow
+    exit 2
+}
+
 & ssh.exe $SshAlias
 exit $LASTEXITCODE

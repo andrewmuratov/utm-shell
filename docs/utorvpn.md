@@ -1,96 +1,89 @@
 # UTORvpn
 
-UTM lab computers normally need either the **U of T campus network** or **UTORvpn**.
+UTM lab computers are normally reachable only from the **U of T network** or through **UTORvpn**.
 
-For normal use, just run:
+You usually do not need to think about this. Just run:
 
 ```text
 utm
 ```
 
-If you're off campus, `utm-shell` detects your platform and guides the VPN setup automatically.
-
-Official U of T links:
-
-- [Download Cisco Secure Client](https://uoft.me/cisco-vpn-download)
-- [UTORvpn usage guide](https://security.utoronto.ca/services/vpn/usage-guide/)
+If UTM is not reachable, `utm` opens the right VPN path for your operating system and waits for you.
 
 ## Windows 10 / 11
 
-1. On the U of T download page, choose the **Windows** client. Use the ARM64 download only on ARM-based Windows devices.
-2. If the download is a `.zip`, extract it.
-3. Run the Cisco Secure Client `.msi` installer.
-4. Accept the licence and finish installation.
-
-`utm-shell` keeps waiting in the original PowerShell window and detects Cisco when installation finishes.
+1. Download **Cisco Secure Client for Windows** from U of T. Use the ARM64 download only on an ARM Windows PC.
+2. Extract the ZIP if the download is zipped.
+3. Run the `.msi` whose name contains **core-vpn** and finish the installer.
+4. Cisco opens. Connect to `general.vpn.utoronto.ca` and sign in with your UTORid.
 
 ## macOS
 
-1. On the U of T download page, choose the **macOS** client.
-2. Open the downloaded `.dmg`.
-3. Run the Cisco Secure Client `.pkg` installer.
-4. Accept the licence agreement.
-5. Uncheck every module except **VPN**, then finish installation.
-
-Keep the original terminal open while installing.
+1. Download **Cisco Secure Client for macOS** from U of T.
+2. Open the downloaded installer and run the Cisco package.
+3. Leave only the **VPN** module selected, then finish installation.
+4. Cisco opens. Connect to `general.vpn.utoronto.ca` and sign in with your UTORid.
 
 ## Ubuntu / Debian
 
-1. On the U of T download page, choose **Linux (DEB)**.
-2. Download and extract the `.tgz` archive.
-3. Open a terminal in the extracted directory.
-4. Install the **main VPN package**, not `vpn-cli`:
+1. Choose **Linux (DEB)** on U of T's Cisco download page and download the `.tgz`.
+2. Extract it.
+3. In the extracted directory, install the **main VPN package**, not `vpn-cli`:
 
 ```bash
 sudo apt install ./cisco-secure-client-vpn_*_amd64.deb
 ```
 
-The underscore after `vpn` is intentional. It selects the GUI VPN package and avoids the separate `cisco-secure-client-vpn-cli` package.
+4. Cisco opens. Connect to `general.vpn.utoronto.ca` and sign in with your UTORid.
 
-Enter your computer password and confirm with `y` if prompted. Keep the original `utm-shell` terminal open.
+## Fedora / RHEL
 
-## Fedora / Red Hat
-
-1. On the U of T download page, choose **Linux (RPM)**.
-2. Download and extract the `.tgz` archive.
-3. Open a terminal in the extracted directory.
-4. Install the **main VPN package**, not `vpn-cli`:
+1. Choose **Linux (RPM)** and download the `.tgz`.
+2. Extract it.
+3. In the extracted directory, install the main VPN package:
 
 ```bash
 sudo dnf install ./cisco-secure-client-vpn-[0-9]*.rpm
 ```
 
-Enter your computer password and confirm if prompted. Keep the original `utm-shell` terminal open.
+4. Cisco opens. Connect to `general.vpn.utoronto.ca` and sign in with your UTORid.
 
 ## WSL
 
-Install Cisco Secure Client on **Windows**, not inside WSL:
+Install Cisco Secure Client on **Windows**, not inside WSL. `utm-shell` can detect and launch the Windows Cisco client from WSL. Once Windows is connected to UTORvpn, the WSL `utm` command continues automatically.
 
-1. Choose the Windows client on the U of T download page.
-2. Extract the ZIP if needed and run the `.msi` in Windows.
-3. Return to WSL. `utm-shell` detects and launches the Windows Cisco client when possible.
+## Other Linux distributions
 
-## Connecting after installation
+The local `utm-shell` installer and SSH workflow are distribution-independent: they use POSIX `sh` and OpenSSH rather than `apt` or `rpm`.
 
-Once Cisco is installed, `utm-shell` opens it and shows:
+U of T currently documents Cisco desktop packages for Debian-based and Fedora-based Linux. If your distribution can install one of those packages compatibly, use the matching U of T package. Otherwise, connect from the U of T campus network or establish U of T-supported VPN connectivity separately; `utm-shell` will continue as soon as the UTM host becomes reachable.
+
+## FreeBSD / OpenBSD / other BSD
+
+`utm-shell` itself works natively with the base shell/OpenSSH toolchain. U of T does not currently publish a Cisco Secure Client package for BSD, so off-campus VPN connectivity must come from a supported environment or another network path. On campus, no VPN client is needed.
+
+## What `utm` does
+
+Once Cisco is installed on a supported desktop platform, normal off-campus use is:
+
+```text
+utm
+```
+
+`utm` opens Cisco, shows only these steps, and waits:
 
 ```text
 UTORvpn
   1. Cisco Secure Client opened.
   2. Enter general.vpn.utoronto.ca and select Connect.
   3. Sign in with your UTORid and password.
-
-Waiting for UTORvpn...
 ```
 
-When the VPN connects, `utm-shell` continues automatically.
+If first-time setup is interrupted while you install/connect VPN, you do **not** need to paste the installer again. When the network is ready, run `utm`; it finishes setup for you.
 
-If you get stuck:
+Official U of T links:
 
-```text
-utm status
-utm doctor
-utm vpn
-```
+- [Cisco Secure Client download](https://uoft.me/cisco-vpn-download)
+- [UTORvpn usage guide](https://security.utoronto.ca/services/vpn/usage-guide/)
 
-> `utm-shell` is an independent convenience project. U of T's current instructions take precedence.
+If you get stuck, run `utm doctor`.

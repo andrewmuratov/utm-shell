@@ -1,60 +1,61 @@
 # Troubleshooting
 
-## `Could not resolve hostname`
+Start with:
 
-Use a real UTM lab hostname such as `dh2026pc08`, not the placeholder pattern `dh20XYpcNM`. Also make sure you are on campus Wi-Fi or connected to UTORvpn.
-
-## `Permission denied (publickey,...)`
-
-Run the installer again while UTM is reachable. It will test key authentication and copy the selected public key when necessary.
-
-## `REMOTE HOST IDENTIFICATION HAS CHANGED`
-
-Do not disable host-key checking globally. Verify the hostname, then remove only the confirmed stale entry:
-
-```bash
-ssh-keygen -R dh2026pc08.utm.utoronto.ca
+```text
+utm doctor
 ```
 
-The same command works with Windows OpenSSH in PowerShell.
+## `Could not resolve hostname`
 
-## `unknown terminal type`
+Make sure the host is real (for example `dh2026pc08`) and that you are on the U of T network or UTORvpn.
 
-Reconnect after installing utm-shell. The remote Bash setup checks whether UTM knows the advertised `TERM` entry and falls back to `xterm-256color` when needed.
-
-## `clear` does not work
+## Off campus / Cisco not installed
 
 Run:
 
-```bash
-printf '%s\n' "$TERM"
-infocmp "$TERM" >/dev/null && echo known || echo unknown
+```text
+utm vpn
 ```
 
-If you installed utm-shell but still get an unknown terminal, run `reload` or reconnect.
+`utm` opens the U of T VPN path for your OS. If your platform has no applicable U of T Cisco package, connect through campus networking or another supported VPN environment, then run `utm` again.
+
+## `Permission denied`
+
+Run:
+
+```text
+utm update
+```
+
+This retests the selected SSH key and repairs the managed setup. If UTM is reachable but a known-correct UTORid password is also rejected, see [login problems](login-problems.md).
+
+## `REMOTE HOST IDENTIFICATION HAS CHANGED`
+
+Do not disable host-key checking globally. Verify that you are using the intended lab host, then remove only the confirmed stale entry:
+
+```sh
+ssh-keygen -R dh2026pc08.utm.utoronto.ca
+```
+
+The same command works in Windows PowerShell with OpenSSH installed.
+
+## `utm: command not found` right after install
+
+Open a new terminal once so your shell reads the PATH change. The installer supports Bash, Zsh, Fish, Csh/Tcsh, Ksh and normal POSIX shell startup files.
+
+## `unknown terminal type`
+
+Reconnect. The managed UTM Bash shell falls back to `xterm-256color` when the lab machine does not know your local terminal's `TERM` entry.
 
 ## Windows says `ssh.exe` is missing
 
-Install Microsoft's OpenSSH Client from Windows Optional Features, or from an elevated PowerShell:
+Install **OpenSSH Client** from Windows Optional Features, then paste the same setup command again.
 
-```powershell
-Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0
-```
+## Still stuck
 
-## X11 window does not appear
-
-Command-line SSH can be working perfectly while X11 is not. Check the platform-specific graphical requirements in [platforms.md](platforms.md): XQuartz on macOS, an X server on Windows, or X11/XWayland/WSLg on Linux/WSL.
-
-## Run the doctor
-
-macOS/Linux/WSL:
-
-```bash
-bash doctor.sh
-```
-
-Windows:
-
-```powershell
-.\doctor.ps1
+```text
+utm status
+utm doctor
+utm update
 ```

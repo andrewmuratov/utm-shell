@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-VERSION="1.6.0"
+VERSION="1.7.0"
 USE_HUSHLOGIN="${1:-1}"
 BASHRC="$HOME/.bashrc"
 START="# >>> utm-shell >>>"
@@ -32,7 +32,6 @@ cat > "$SHELL_FILE" <<'SHELL_EOF'
 # Managed by utm-shell. Rerun `utm update` to update this file.
 
 unalias c cls usage py gs gd gl utm-help utm-version 2>/dev/null || true
-
 [[ $- == *i* ]] || return 0
 
 if [[ -n ${TERM:-} ]] && command -v infocmp >/dev/null 2>&1 && ! infocmp "$TERM" >/dev/null 2>&1; then
@@ -64,53 +63,28 @@ function cls { c; }
 function usage {
   local -a items=()
   local item
-  while IFS= read -r -d '' item; do
-    items+=("$item")
-  done < <(find . -mindepth 1 -maxdepth 1 -print0 2>/dev/null)
-
-  if ((${#items[@]} == 0)); then
-    printf 'No files in %s\n' "$PWD"
-    return 0
-  fi
-
+  while IFS= read -r -d '' item; do items+=("$item"); done < <(find . -mindepth 1 -maxdepth 1 -print0 2>/dev/null)
+  if ((${#items[@]} == 0)); then printf 'No files in %s\n' "$PWD"; return 0; fi
   du -sh -- "${items[@]}" 2>/dev/null | sort -h
 }
 
 function py {
-  if ! command -v python3 >/dev/null 2>&1; then
-    printf 'python3 is not available on this lab machine.\n' >&2
-    return 127
-  fi
+  if ! command -v python3 >/dev/null 2>&1; then printf 'python3 is not available on this lab machine.\n' >&2; return 127; fi
   python3 "$@"
 }
 
 function _utm_git_need_repo {
-  if ! command -v git >/dev/null 2>&1; then
-    printf 'git is not available on this lab machine.\n' >&2
-    return 127
-  fi
-  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    printf 'Not in a Git repository: %s\n' "$PWD" >&2
-    return 1
-  fi
+  if ! command -v git >/dev/null 2>&1; then printf 'git is not available on this lab machine.\n' >&2; return 127; fi
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then printf 'Not in a Git repository: %s\n' "$PWD" >&2; return 1; fi
 }
-
 function gs { _utm_git_need_repo || return; git status "$@"; }
 function gd { _utm_git_need_repo || return; git diff "$@"; }
 function gl { _utm_git_need_repo || return; git log --oneline --graph --decorate -15 "$@"; }
 
-function mkcd {
-  [[ $# -eq 1 ]] || { printf 'usage: mkcd <directory>\n' >&2; return 2; }
-  mkdir -p -- "$1" && cd -- "$1"
-}
-
-function ff {
-  [[ $# -ge 1 ]] || { printf 'usage: ff <name>\n' >&2; return 2; }
-  find . -iname "*$1*" 2>/dev/null
-}
-
+function mkcd { [[ $# -eq 1 ]] || { printf 'usage: mkcd <directory>\n' >&2; return 2; }; mkdir -p -- "$1" && cd -- "$1"; }
+function ff { [[ $# -ge 1 ]] || { printf 'usage: ff <name>\n' >&2; return 2; }; find . -iname "*$1*" 2>/dev/null; }
 function path { printf '%s\n' "$PATH" | tr ':' '\n'; }
-function utm-version { printf 'utm-shell 1.6.0\n'; }
+function utm-version { printf 'utm-shell 1.7.0\n'; }
 
 function utm-help {
   cat <<'HELP_EOF'
@@ -152,19 +126,11 @@ fi
 # <<< utm-shell <<<
 BASHRC_EOF
 
-if ! bash -n "$BASHRC"; then
-  printf 'utm-shell: ~/.bashrc has a syntax error outside the managed block.\n' >&2
-  exit 2
-fi
+if ! bash -n "$BASHRC"; then printf 'utm-shell: ~/.bashrc has a syntax error outside the managed block.\n' >&2; exit 2; fi
 
-if [[ -f "$HOME/.bash_profile" ]]; then
-  LOGIN_FILE="$HOME/.bash_profile"
-elif [[ -f "$HOME/.bash_login" ]]; then
-  LOGIN_FILE="$HOME/.bash_login"
-else
-  LOGIN_FILE="$HOME/.profile"
-  touch "$LOGIN_FILE"
-fi
+if [[ -f "$HOME/.bash_profile" ]]; then LOGIN_FILE="$HOME/.bash_profile"
+elif [[ -f "$HOME/.bash_login" ]]; then LOGIN_FILE="$HOME/.bash_login"
+else LOGIN_FILE="$HOME/.profile"; touch "$LOGIN_FILE"; fi
 
 remove_block "$LOGIN_FILE" "$LOGIN_START" "$LOGIN_END"
 LOGIN_MANAGED=0
@@ -181,10 +147,7 @@ LOGIN_EOF
 fi
 
 HUSH_CREATED=0
-if [[ "$USE_HUSHLOGIN" == "1" && ! -e "$HOME/.hushlogin" ]]; then
-  touch "$HOME/.hushlogin"
-  HUSH_CREATED=1
-fi
+if [[ "$USE_HUSHLOGIN" == "1" && ! -e "$HOME/.hushlogin" ]]; then touch "$HOME/.hushlogin"; HUSH_CREATED=1; fi
 
 {
   printf 'VERSION=%q\n' "$VERSION"
@@ -193,5 +156,4 @@ fi
   printf 'HUSH_CREATED=%q\n' "$HUSH_CREATED"
 } > "$STATE_FILE"
 chmod 600 "$STATE_FILE"
-
 printf 'utm-shell %s installed\n' "$VERSION"

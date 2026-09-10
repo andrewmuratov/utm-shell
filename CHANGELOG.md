@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.7.0 — 2026-09-09
+
+- rewrote the local Unix installer, connector, diagnostics, and uninstaller as portable POSIX `sh`; local Bash is no longer required
+- added first-class FreeBSD and OpenBSD install commands using their base-system `fetch` / `ftp` downloaders
+- added downloader fallbacks for curl, wget, FreeBSD fetch, and OpenBSD ftp
+- added shell PATH setup for Bash, Zsh, Fish, Csh/Tcsh, Ksh, and generic POSIX shells
+- made interrupted first-time VPN setup resumable by simply typing `utm`; no long installer command needs to be pasted again
+- increased the Cisco installation wait from 10 to 30 minutes and the VPN connection wait to 5 minutes
+- added explicit handling for non-DEB/RPM Linux, non-x86_64 Linux, FreeBSD, OpenBSD, NetBSD, DragonFlyBSD, and generic Unix systems
+- clarified the boundary between utm-shell portability and U of T/Cisco VPN package availability
+- fixed Linux VPN instructions to select the main `cisco-secure-client-vpn` package rather than the separate `vpn-cli` package
+- clarified Windows first-time VPN installation to use the `core-vpn` MSI from the Cisco bundle
+- added Alpine/BusyBox, real FreeBSD VM, and real OpenBSD VM CI jobs alongside Ubuntu, macOS, and Windows validation
+- simplified the README and getting-started guide around the one-command install and one-command daily workflow
+
 ## 1.6.0 — 2026-09-09
 
 - replaced the vague off-campus message with short numbered UTORvpn instructions

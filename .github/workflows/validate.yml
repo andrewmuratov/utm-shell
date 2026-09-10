@@ -10,37 +10,38 @@ permissions:
 
 jobs:
   unix:
-    name: ${{ matrix.os }} / Bash
+    name: ${{ matrix.os }} / Unix
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Validate Bash syntax
+      - name: Validate portable shell syntax
         run: |
-          bash -n setup.sh
+          sh -n setup.sh
+          sh -n connect.sh
+          sh -n install.sh
+          sh -n uninstall.sh
+          sh -n doctor.sh
           bash -n remote.sh
-          bash -n connect.sh
-          bash -n install.sh
-          bash -n uninstall.sh
-          bash -n doctor.sh
+          if command -v dash >/dev/null 2>&1; then
+            for f in setup.sh connect.sh install.sh uninstall.sh doctor.sh; do dash -n "$f"; done
+          fi
 
-      - name: Smoke-test Bash CLIs
+      - name: Smoke-test CLIs
         run: |
-          bash setup.sh --help >/dev/null
-          bash connect.sh --help >/dev/null
-          bash connect.sh files >/dev/null
-          bash install.sh --help >/dev/null
-          bash uninstall.sh --help >/dev/null
-          bash doctor.sh --help >/dev/null
-          grep -q 'security.utoronto.ca/services/vpn/usage-guide' connect.sh
-          grep -q 'Waiting for Cisco Secure Client' connect.sh
+          sh setup.sh --help >/dev/null
+          sh connect.sh --help >/dev/null
+          sh connect.sh files >/dev/null
+          sh install.sh --help >/dev/null
+          sh uninstall.sh --help >/dev/null
+          sh doctor.sh --help >/dev/null
           grep -q 'general.vpn.utoronto.ca' connect.sh
-          grep -q "DEFAULT_HOST='dh2026pc08'" setup.sh
+          grep -q 'cisco-secure-client-vpn_\*_amd64.deb' connect.sh
+          grep -q "VERSION='1.7.0'" setup.sh
 
       - name: Test remote shell in a clean temporary HOME
         run: |
@@ -48,14 +49,73 @@ jobs:
           HOME="$temp_home" bash remote.sh 1 >/dev/null
           bash -n "$temp_home/.bashrc"
           bash -n "$temp_home/.config/utm-shell/shell.sh"
-          HOME="$temp_home" bash --noprofile --norc -ic 'source ~/.config/utm-shell/shell.sh; type c usage py gs utm-help >/dev/null; utm-version' 2>/dev/null | grep -q '1.6.0'
+          HOME="$temp_home" bash --noprofile --norc -ic 'source ~/.config/utm-shell/shell.sh; type c usage py gs utm-help >/dev/null; utm-version' 2>/dev/null | grep -q '1.7.0'
+
+  alpine:
+    name: Alpine / BusyBox sh
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test non-DEB/RPM Linux shell path
+        run: |
+          docker run --rm -v "$PWD:/repo:ro" alpine:3.22 sh -c '
+            cd /repo
+            for f in setup.sh connect.sh install.sh uninstall.sh doctor.sh; do sh -n "$f"; done
+            sh setup.sh --help >/dev/null
+            sh connect.sh --help >/dev/null
+            sh connect.sh files >/dev/null
+            sh install.sh --help >/dev/null
+            sh uninstall.sh --help >/dev/null
+            sh doctor.sh --help >/dev/null
+          '
+
+  freebsd:
+    name: FreeBSD / base sh
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test in FreeBSD VM
+        uses: vmactions/freebsd-vm@v1
+        with:
+          prepare: |
+            command -v sh
+            command -v ssh
+            command -v fetch
+          run: |
+            for f in setup.sh connect.sh install.sh uninstall.sh doctor.sh; do sh -n "$f"; done
+            sh setup.sh --help >/dev/null
+            sh connect.sh --help >/dev/null
+            sh connect.sh files >/dev/null
+            sh install.sh --help >/dev/null
+            sh uninstall.sh --help >/dev/null
+            sh doctor.sh --help >/dev/null
+
+  openbsd:
+    name: OpenBSD / base sh
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test in OpenBSD VM
+        uses: vmactions/openbsd-vm@v1
+        with:
+          prepare: |
+            command -v sh
+            command -v ssh
+            command -v ftp
+          run: |
+            for f in setup.sh connect.sh install.sh uninstall.sh doctor.sh; do sh -n "$f"; done
+            sh setup.sh --help >/dev/null
+            sh connect.sh --help >/dev/null
+            sh connect.sh files >/dev/null
+            sh install.sh --help >/dev/null
+            sh uninstall.sh --help >/dev/null
+            sh doctor.sh --help >/dev/null
 
   windows:
-    name: windows-latest / PowerShell
+    name: Windows / PowerShell
     runs-on: windows-latest
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Validate PowerShell syntax
         shell: pwsh
@@ -86,7 +146,6 @@ jobs:
           .\uninstall.ps1 -Help | Out-Null
           .\doctor.ps1 -Help | Out-Null
           $connect = Get-Content .\connect.ps1 -Raw
-          if ($connect -notmatch 'security.utoronto.ca/services/vpn/usage-guide') { throw 'Official VPN guide missing' }
-          if ($connect -notmatch 'Waiting for Cisco Secure Client') { throw 'Automatic Cisco wait flow missing' }
           if ($connect -notmatch 'general.vpn.utoronto.ca') { throw 'VPN server missing' }
-          if ((Get-Content .\setup.ps1 -Raw) -notmatch "DefaultHost = 'dh2026pc08'") { throw 'Default host missing' }
+          if ($connect -notmatch 'core-vpn') { throw 'Windows VPN module guidance missing' }
+          if ((Get-Content .\setup.ps1 -Raw) -notmatch "Version = '1.7.0'") { throw 'Version mismatch' }
