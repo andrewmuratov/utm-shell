@@ -17,7 +17,7 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Validate portable shell syntax
         run: |
@@ -43,21 +43,40 @@ jobs:
           grep -Fq "cisco-secure-client-vpn_[0-9]*_amd64.deb" connect.sh
           grep -q 'install_linux_download_if_ready' connect.sh
           grep -q 'Cisco download found' connect.sh
-          grep -q "VERSION='1.7.0'" setup.sh
+          grep -Eq "^VERSION='[0-9]+\.[0-9]+\.[0-9]+'$" setup.sh
 
-      - name: Test remote shell in a clean temporary HOME
+      - name: Test remote shell and legacy repair
         run: |
+          remote_version="$(sed -n 's/^VERSION="\([^"]*\)"/\1/p' remote.sh | head -n 1)"
+          test -n "$remote_version"
+
           temp_home="$(mktemp -d)"
           HOME="$temp_home" bash remote.sh 1 >/dev/null
           bash -n "$temp_home/.bashrc"
           bash -n "$temp_home/.config/utm-shell/shell.sh"
-          HOME="$temp_home" bash --noprofile --norc -ic 'source ~/.config/utm-shell/shell.sh; type c usage py gs utm-help >/dev/null; utm-version' 2>/dev/null | grep -q '1.7.0'
+          HOME="$temp_home" bash --noprofile --norc -ic 'source ~/.config/utm-shell/shell.sh; type c usage py gs utm-help >/dev/null; utm-version' 2>/dev/null | grep -Fq "UTM Shell $remote_version"
+
+          legacy_home="$(mktemp -d)"
+          cat > "$legacy_home/.bashrc" <<'LEGACY_EOF'
+          alias usage='du -sh *'
+          alias path='echo "$PATH"'
+          # >>> utm-shell >>>
+          if [[ $- == *i* ]]; then
+            usage() { echo legacy; }
+          fi
+          # <<< utm-shell <<<
+          LEGACY_EOF
+          HOME="$legacy_home" bash remote.sh 0 >/dev/null
+          bash -n "$legacy_home/.bashrc"
+          bash -n "$legacy_home/.config/utm-shell/shell.sh"
+          HOME="$legacy_home" bash --noprofile --norc -ic 'source ~/.bashrc; type usage path utm-version >/dev/null' 2>/dev/null
+          ! grep -q 'echo legacy' "$legacy_home/.bashrc"
 
   alpine:
     name: Alpine / BusyBox sh
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Test non-DEB/RPM Linux shell path
         run: |
           docker run --rm -v "$PWD:/repo:ro" alpine:3.22 sh -c '
@@ -75,7 +94,7 @@ jobs:
     name: FreeBSD / base sh
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Test in FreeBSD VM
         uses: vmactions/freebsd-vm@v1
         with:
@@ -96,7 +115,7 @@ jobs:
     name: OpenBSD / base sh
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Test in OpenBSD VM
         uses: vmactions/openbsd-vm@v1
         with:
@@ -117,7 +136,7 @@ jobs:
     name: Windows / PowerShell
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Validate PowerShell syntax
         shell: pwsh
@@ -151,4 +170,4 @@ jobs:
           if ($connect -notmatch 'general.vpn.utoronto.ca') { throw 'VPN server missing' }
           if ($connect -notmatch 'core-vpn') { throw 'Windows VPN module guidance missing' }
           if ($connect -notmatch 'Try-AutoInstallCisco') { throw 'Windows VPN auto-install missing' }
-          if ((Get-Content .\setup.ps1 -Raw) -notmatch "Version = '1.7.0'") { throw 'Version mismatch' }
+          if ((Get-Content .\setup.ps1 -Raw) -notmatch "Version = '[0-9]+\.[0-9]+\.[0-9]+'"){ throw 'Version format invalid' }
